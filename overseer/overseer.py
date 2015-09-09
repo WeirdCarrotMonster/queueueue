@@ -8,7 +8,7 @@ import simplejson as json
 import asyncio
 from aiohttp import web
 
-from .queue import MultiLockPriorityPoolQueue, Task
+from .taskqueue import MultiLockPriorityPoolQueue, Task
 
 
 class Manager(object):

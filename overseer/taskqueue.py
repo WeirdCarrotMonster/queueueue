@@ -73,11 +73,12 @@ class MultiLockPriorityPoolQueue(object):
             raise LookupError
 
         logging.info("Removing task {}[{}]".format(task.name, task.id))
-        logging.debug("Queue length: {}".format(len(self._tasks)))
-        logging.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
         task.update(**data)
 
         for lock in task.locks:
             self._locks[lock].release()
+
+        logging.debug("Queue length: {}".format(len(self._tasks)))
+        logging.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
 
         return task

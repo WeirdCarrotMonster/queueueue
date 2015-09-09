@@ -35,10 +35,10 @@ class WrappedProcess(Process):
         super(WrappedProcess, self).__init__(*args, **kwargs)
 
     def run(self):
-        import StringIO
+        from io import StringIO
         import sys
-        stdout = StringIO.StringIO()
-        stderr = StringIO.StringIO()
+        stdout = StringIO()
+        stderr = StringIO()
         sys.stdout = stdout
         sys.stderr = stderr
         try:
@@ -71,17 +71,20 @@ class Worker(object):
         self._current_task = None
 
     def task(self, arg):
-        task_name = getattr(arg, "func_name", None)
-
-        if not task_name:
+        if not getattr(arg, "__call__", None):
             # Декоратор с параметрами - на вход передали имя функции
             def wrapper(f):
                 self._register_task(f, arg)
                 return f
         else:
             # Декоратор без параметров - оборачивает непосредственно функцию
-            self._register_task(arg, task_name)
+            self._register_task(arg, arg.__name__)
             return arg
+
+    def register_task(self, func, name=None):
+        func_name = name or getattr(func, "func_name", None)
+
+        self._register_task(func, func_name)
 
     def _register_task(self, func, name):
         logging.debug("Registered function {} for task {}".format(func, name))
