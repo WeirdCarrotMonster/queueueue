@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name="overseer",
+    name="queueueue",
     version="0.1",
     maintainer="Eugene Protozanov",
     maintainer_email="protozanov@noblecode.ru",
-    description="Overseer task queue",
+    description="Advanced task queueueue",
     packages=find_packages(),
     install_requires=[
         'aiohttp',
@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'overseer = overseer.overseer:main',
+            'overseer = queueueue.queueueue:main',
         ],
     },
 )

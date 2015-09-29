@@ -6,7 +6,7 @@ myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 
 
-from overseer.queue import MultiLockPriorityPoolQueue, Task
+from queueueue.taskqueue import MultiLockPriorityPoolQueue, Task
 
 
 def test_queue_add():

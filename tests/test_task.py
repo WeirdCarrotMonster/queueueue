@@ -5,7 +5,7 @@ myPath = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, myPath + '/../')
 
 
-from overseer.queue import Task
+from queueueue.taskqueue import Task
 
 
 def test_task_update():
