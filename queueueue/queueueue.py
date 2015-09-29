@@ -26,9 +26,9 @@ def safe_int_conversion(value, default, min_val=None, max_val=None):
 
 
 class Manager(object):
-    def __init__(self, host="127.0.0.1", port=8080, auth=None, loop=None):
+    def __init__(self, loop=None, host="127.0.0.1", port=8080, auth=None):
         self._queue = MultiLockPriorityPoolQueue()
-        self._loop = loop or asyncio.get_event_loop()
+        self._loop = loop
         self._result_handlers = []
         self._host = host
         self._port = port
@@ -46,10 +46,15 @@ class Manager(object):
         self._app = web.Application(loop=self._loop)
         self._setup_routes()
 
-        self._srv = self._loop.create_server(
+        self._srv = None
+
+    @asyncio.coroutine
+    def create_server(self):
+        self._srv = yield from self._loop.create_server(
             self._app.make_handler(),
             self._host, self._port
         )
+        return self._srv
 
     def _setup_routes(self):
         self._add_route('OPTIONS', '/', self.short_info)
@@ -78,7 +83,7 @@ class Manager(object):
         return wrapper
 
     def result_handler(self, f):
-        assert asyncio.iscoroutine(f), "Result handler must be coroutine"
+        assert asyncio.iscoroutinefunction(f), "Result handler must be coroutine"
         self._result_handlers.append(f)
 
     @asyncio.coroutine
@@ -146,46 +151,7 @@ class Manager(object):
     def delete_task(self, request):
         _id = request.match_info.get('task_id')
         try:
-            self._qeueue.safe_remove(_id)
+            self._queue.safe_remove(_id)
             return web.Response(text=json.dumps({"result": "Success"}))
         except LookupError:
             return web.Response(text=json.dumps({"error": "Unknown task"}), status=404)
-
-    def start(self):
-        self._logger.info("Server started on http://{}:{}".format(self._host, self._port))
-        self._loop.run_until_complete(self._srv)
-
-    def run(self):
-        self.start()
-        try:
-            self._loop.run_forever()
-        except KeyboardInterrupt:
-            pass
-
-
-def main():
-    import argparse
-    parser = argparse.ArgumentParser(prog='overseer')
-    parser.add_argument("--host", help="overseer listen address")
-    parser.add_argument("--port", help="overseer listen port")
-    parser.add_argument("--auth", help="authentication credentials")
-    parser.add_argument("--loglevel", help="logging verbosity level")
-
-    args = parser.parse_args()
-
-    config = {}
-    if args.host:
-        config["host"] = args.host
-    if args.port:
-        config["port"] = args.port
-    if args.auth:
-        config["auth"] = tuple(_ for _ in args.auth.split(":"))
-    if args.loglevel:
-        logging.basicConfig(level=args.loglevel)
-
-    m = Manager(**config)
-    m.run()
-
-
-if __name__ == "__main__":
-    main()

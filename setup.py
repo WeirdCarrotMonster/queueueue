@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'queueueue = queueueue.queueueue:main',
+            'queueueue = queueueue.shell:main',
         ],
     },
 )
