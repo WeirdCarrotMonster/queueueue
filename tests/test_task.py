@@ -1,10 +1,4 @@
 import pytest
-import sys, os
-
-myPath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, myPath + '/../')
-
-
 from queueueue.taskqueue import Task
 
 
@@ -50,3 +44,9 @@ def test_task_worker_info():
     assert "name" in w_i
     assert "args" in w_i
     assert "kwargs" in w_i
+
+
+def test_task_for_json():
+    t = Task("test_task", [1, 2, 3], "pool", [1], {})
+
+    assert type(t.for_json()) == dict

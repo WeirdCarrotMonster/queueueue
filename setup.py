@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'overseer = queueueue.queueueue:main',
+            'queueueue = queueueue.queueueue:main',
         ],
     },
 )

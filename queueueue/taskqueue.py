@@ -25,6 +25,16 @@ class Task(object):
             if attr in data:
                 setattr(self, attr, data[attr])
 
+    def for_json(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "locks": self.locks,
+            "pool": self.pool,
+            "args": self.args,
+            "kwargs": self.kwargs
+        }
+
     @property
     def worker_info(self):
         return {
@@ -41,6 +51,22 @@ class MultiLockPriorityPoolQueue(object):
         self._locks = defaultdict(Lock)
         self._tasks = []
         self._active_tasks = {}
+
+    @property
+    def task_count(self):
+        return len(self._tasks)
+
+    @property
+    def tasks(self):
+        return self._tasks
+
+    @property
+    def locks_free(self):
+        return len(list(filter(lambda l: not l.locked(), self._locks.values())))
+
+    @property
+    def locks_taken(self):
+        return len(list(filter(lambda l: l.locked(), self._locks.values())))
 
     def put(self, task):
         logging.info("Queued task {}[{}]".format(task.name, task.id))
@@ -82,3 +108,21 @@ class MultiLockPriorityPoolQueue(object):
         logging.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
 
         return task
+
+    def safe_remove(self, task_id):
+        task_id = uuid.UUID(task_id)
+
+        if task_id in self._active_tasks:
+            task = self._active_tasks.pop(task_id, None)
+
+            for lock in task.locks:
+                self._locks[lock].release()
+
+            return
+
+        for task in self._tasks:
+            if task.id == task_id:
+                self._tasks.remove(task)
+                return
+
+        raise LookupError

@@ -1,11 +1,5 @@
 import pytest
 import uuid
-import sys, os
-
-myPath = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, myPath + '/../')
-
-
 from queueueue.taskqueue import MultiLockPriorityPoolQueue, Task
 
 
@@ -16,7 +10,17 @@ def test_queue_add():
     q.put(t)
 
     assert len(q._tasks) == 1
+    assert q.task_count == 1
     assert len(q._locks.items()) == 0
+
+
+def test_queue_task_list_access():
+    q = MultiLockPriorityPoolQueue()
+    t = Task("test_task", [], "pool", [], {})
+
+    q.put(t)
+
+    assert q.tasks is q._tasks
 
 
 def test_queue_use_locks():
@@ -27,6 +31,8 @@ def test_queue_use_locks():
     q.get("pool")
 
     assert len(q._locks.items()) == 3
+    assert q.locks_taken == 3
+    assert q.locks_free == 0
     assert 1 in q._locks
     assert 2 in q._locks
     assert 3 in q._locks
@@ -110,3 +116,43 @@ def test_queue_complete_task():
     q.complete(str(task.id), {"stdout": "", "stderr": "", "result": "", "status": "success"})
 
     assert all(not lock.locked() for lock in q._locks.values())
+
+
+def test_queue_safe_remove_active():
+    q = MultiLockPriorityPoolQueue()
+    t = Task("test_task", [1, 2, 3], "pool", [], {})
+
+    q.put(t)
+    q.get("pool")
+
+    assert len(q._locks.items()) == 3
+    assert 1 in q._locks
+    assert 2 in q._locks
+    assert 3 in q._locks
+
+    q.safe_remove(str(t.id))
+
+    assert all(not lock.locked() for lock in q._locks.values())
+
+
+def test_queue_safe_remove_pending():
+    q = MultiLockPriorityPoolQueue()
+    t = Task("test_task", [1, 2, 3], "pool", [], {})
+
+    q.put(t)
+
+    assert len(q._locks.items()) == 0
+
+    q.safe_remove(str(t.id))
+
+    assert all(not lock.locked() for lock in q._locks.values())
+
+
+def test_queue_safe_remove_not_existing():
+    q = MultiLockPriorityPoolQueue()
+    t = Task("test_task", [1, 2, 3], "pool", [], {})
+
+    assert len(q._locks.items()) == 0
+
+    with pytest.raises(LookupError):
+        q.safe_remove(str(t.id))
