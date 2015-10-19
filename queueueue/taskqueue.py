@@ -74,8 +74,8 @@ class MultiLockPriorityPoolQueue(object):
 
     def put(self, task):
         self._logger.info("Queued task {}".format(repr(task)))
-        self._logger.debug("Queue length: {}".format(len(self._tasks)))
         self._tasks.append(task)
+        self._logger.debug("Queue length: {}".format(len(self._tasks)))
 
     def get(self, pool):
         for task in self._tasks:
