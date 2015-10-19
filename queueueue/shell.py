@@ -7,9 +7,9 @@ from .queueueue import Manager
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='overseer')
-    parser.add_argument("--host", help="overseer listen address")
-    parser.add_argument("--port", help="overseer listen port")
+    parser = argparse.ArgumentParser(prog='queueueue')
+    parser.add_argument("--host", help="queueueue listen address")
+    parser.add_argument("--port", help="queueueue listen port")
     parser.add_argument("--auth", help="authentication credentials")
     parser.add_argument("--loglevel", help="logging verbosity level")
 
