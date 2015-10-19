@@ -47,6 +47,22 @@ class Task(object):
             "kwargs": self.kwargs
         }
 
+    @property
+    def full_info(self):
+        return {
+            "id": str(self.id),
+            "name": self.name,
+            "args": self.args,
+            "kwargs": self.kwargs,
+            "locks": self.locks,
+            "pool": self.pool,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "result": self.result,
+            "status": self.status,
+            "traceback": self.traceback
+        }
+
 
 class MultiLockPriorityPoolQueue(object):
 

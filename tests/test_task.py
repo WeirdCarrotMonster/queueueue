@@ -46,6 +46,25 @@ def test_task_worker_info():
     assert "kwargs" in w_i
 
 
+def test_task_full_info():
+    t = Task("test_task", [1, 2, 3], "pool", [1], {})
+
+    f_i = t.full_info
+
+    assert len(f_i.items()) == 11
+    assert "id" in f_i
+    assert "name" in f_i
+    assert "args" in f_i
+    assert "kwargs" in f_i
+    assert "locks" in f_i
+    assert "pool" in f_i
+    assert "stdout" in f_i
+    assert "stderr" in f_i
+    assert "result" in f_i
+    assert "status" in f_i
+    assert "traceback" in f_i
+
+
 def test_task_for_json():
     t = Task("test_task", [1, 2, 3], "pool", [1], {})
 
