@@ -23,7 +23,10 @@ def main():
     if args.auth:
         config["auth"] = tuple(_ for _ in args.auth.split(":"))
     if args.loglevel:
-        logging.basicConfig(level=args.loglevel)
+        logging.basicConfig(
+            level=args.loglevel,
+            format="%(asctime)-15s %(levelname)-8s %(message)s"
+        )
 
     loop = asyncio.get_event_loop()
 
