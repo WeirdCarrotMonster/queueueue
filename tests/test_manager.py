@@ -2,8 +2,7 @@ import socket
 import unittest
 import unittest.mock
 
-import simplejson as json
-
+import json
 import aiohttp
 import asyncio
 import pytest

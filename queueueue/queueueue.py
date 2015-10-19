@@ -3,7 +3,7 @@
 import logging
 from email.base64mime import b64encode
 
-import simplejson as json
+import json
 
 import asyncio
 from aiohttp import web
@@ -23,6 +23,14 @@ def safe_int_conversion(value, default, min_val=None, max_val=None):
         result = default
 
     return result
+
+
+class JSONResponse(web.Response):
+
+    def __init__(self, data, **kwargs):
+        kwargs["text"] = json.dumps(data)
+        kwargs["content_type"] = "application/json"
+        super().__init__(**kwargs)
 
 
 class Manager(object):
@@ -79,7 +87,7 @@ class Manager(object):
         def wrapper(request, *args, **kwargs):
             if not request.headers.get("AUTHORIZATION") == self._auth:
                 self._logger.warning("Request with invalid auth credentials blocked: {} {}".format(request.method, request.path_qs))
-                return web.Response(text=json.dumps({"error": "Not authorized"}), status=403)
+                return JSONResponse({"error": "Not authorized"}, status=403)
             return f(request, *args, **kwargs)
 
         return wrapper
@@ -98,13 +106,13 @@ class Manager(object):
 
     @asyncio.coroutine
     def short_info(self, request):
-        return web.Response(text=json.dumps({
+        return JSONResponse({
             "tasks": self._queue.task_count,
             "locks": {
                 "taken": self._queue.locks_taken,
                 "free": self._queue.locks_free
             }
-        }))
+        })
 
     @asyncio.coroutine
     def list_tasks(self, request):
@@ -117,25 +125,25 @@ class Manager(object):
             min_val=1, max_val=50
         )
 
-        return web.Response(text=json.dumps([
+        return JSONResponse([
             task.for_json() for task in self._queue.tasks[offset:offset + limit]
-        ]))
+        ])
 
     @asyncio.coroutine
     def add_task(self, request):
-        data = yield from request.json(loader=json.loads)
+        data = yield from request.json()
         self._queue.put(Task(**data))
-        return web.Response(text=json.dumps({"result": "success"}))
+        return JSONResponse({"result": "success"})
 
     @asyncio.coroutine
     def get_task(self, request):
         pool = request.GET.get("pool")
         if not pool:
-            return web.Response(text=json.dumps(None))
+            return JSONResponse(None)
 
         task = self._queue.get(pool=pool)
         data = task.worker_info if task else None
-        return web.Response(text=json.dumps(data))
+        return JSONResponse(data)
 
     @asyncio.coroutine
     def complete_task(self, request):
@@ -145,15 +153,15 @@ class Manager(object):
         try:
             task = self._queue.complete(_id, data)
             yield from self.handle_result(task)
-            return web.Response(text=json.dumps({"result": "Success"}))
+            return JSONResponse({"result": "Success"})
         except LookupError:
-            return web.Response(text=json.dumps({"error": "Unknown task"}), status=404)
+            return JSONResponse({"error": "Unknown task"}, status=404)
 
     @asyncio.coroutine
     def delete_task(self, request):
         _id = request.match_info.get('task_id')
         try:
             self._queue.safe_remove(_id)
-            return web.Response(text=json.dumps({"result": "Success"}))
+            return JSONResponse({"result": "Success"})
         except LookupError:
-            return web.Response(text=json.dumps({"error": "Unknown task"}), status=404)
+            return JSONResponse({"error": "Unknown task"}, status=404)
