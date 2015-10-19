@@ -20,6 +20,9 @@ class Task(object):
         self.result = None
         self.traceback = None
 
+    def __repr__(self):
+        return "<{} [{}][{}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
+
     def update(self, **data):
         for attr in ["stdout", "stderr", "result", "status", "traceback"]:
             if attr in data:
@@ -51,6 +54,7 @@ class MultiLockPriorityPoolQueue(object):
         self._locks = defaultdict(Lock)
         self._tasks = []
         self._active_tasks = {}
+        self._logger = logging.getLogger("Queue")
 
     @property
     def task_count(self):
@@ -69,8 +73,8 @@ class MultiLockPriorityPoolQueue(object):
         return len(list(filter(lambda l: l.locked(), self._locks.values())))
 
     def put(self, task):
-        logging.info("Queued task {}[{}]".format(task.name, task.id))
-        logging.debug("Queue length: {}".format(len(self._tasks)))
+        self._logger.info("Queued task {}".format(repr(task)))
+        self._logger.debug("Queue length: {}".format(len(self._tasks)))
         self._tasks.append(task)
 
     def get(self, pool):
@@ -86,8 +90,8 @@ class MultiLockPriorityPoolQueue(object):
             for lock in task.locks:
                 self._locks[lock].acquire()
 
-            logging.info("Sending task {}[{}]".format(task.name, task.id))
-            logging.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
+            self._logger.info("Sending task {}".format(repr(task)))
+            self._logger.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
             return task
         return None
 
@@ -98,14 +102,14 @@ class MultiLockPriorityPoolQueue(object):
         if not task:
             raise LookupError
 
-        logging.info("Removing task {}[{}]".format(task.name, task.id))
+        self._logger.info("Completed task {}".format(repr(task)))
         task.update(**data)
 
         for lock in task.locks:
             self._locks[lock].release()
 
-        logging.debug("Queue length: {}".format(len(self._tasks)))
-        logging.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
+        self._logger.debug("Queue length: {}".format(len(self._tasks)))
+        self._logger.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
 
         return task
 

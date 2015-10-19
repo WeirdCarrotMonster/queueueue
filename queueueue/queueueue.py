@@ -54,6 +54,7 @@ class Manager(object):
             self._app.make_handler(),
             self._host, self._port
         )
+        self._logger.info("Created server on {}:{}".format(self._host, self._port))
         return self._srv
 
     def _setup_routes(self):
@@ -77,6 +78,7 @@ class Manager(object):
         @asyncio.coroutine
         def wrapper(request, *args, **kwargs):
             if not request.headers.get("AUTHORIZATION") == self._auth:
+                self._logger.warning("Request with invalid auth credentials blocked: {} {}".format(request.method, request.path_qs))
                 return web.Response(text=json.dumps({"error": "Not authorized"}), status=403)
             return f(request, *args, **kwargs)
 
