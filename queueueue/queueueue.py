@@ -132,8 +132,17 @@ class Manager(object):
     @asyncio.coroutine
     def add_task(self, request):
         data = yield from request.json()
-        self._queue.put(Task(**data))
-        return JSONResponse({"result": "success"})
+        task = Task(**data)
+        self._queue.put(task)
+
+        wait = request.GET.get("wait") == "true"
+        if wait:
+            yield from task.completed.wait()
+            result = task.completed.data
+        else:
+            result = {"result": "success"}
+
+        return JSONResponse(result)
 
     @asyncio.coroutine
     def get_task(self, request):
