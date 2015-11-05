@@ -1,5 +1,6 @@
 import logging
 import uuid
+import asyncio
 from collections import defaultdict
 from threading import Lock
 
@@ -20,6 +21,8 @@ class Task(object):
         self.result = None
         self.traceback = None
 
+        self.completed = asyncio.Event()
+
     def __repr__(self):
         return "<{} [{}][{}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
 
@@ -27,6 +30,12 @@ class Task(object):
         for attr in ["stdout", "stderr", "result", "status", "traceback"]:
             if attr in data:
                 setattr(self, attr, data[attr])
+
+        self.completed.data = {
+            "status": data.get("status"),
+            "result": data.get("result")
+        }
+        self.completed.set()
 
     def for_json(self):
         return {

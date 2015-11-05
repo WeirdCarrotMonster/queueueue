@@ -59,11 +59,10 @@ class TestManagerTaskProcessing(unittest.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
 
     def tearDown(self):
         pass
-        # self.loop.close()
 
     def find_unused_port(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
