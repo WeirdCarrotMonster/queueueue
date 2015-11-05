@@ -13,7 +13,7 @@ def test_task_update():
         "status": 5
     }
 
-    t.update(**update_dict)
+    t.complete(**update_dict)
 
     for key, value in update_dict.items():
         assert getattr(t, key) == value
@@ -27,7 +27,7 @@ def test_task_update_only_required():
         "error": 2,
     }
 
-    t.update(**update_dict)
+    t.complete(**update_dict)
 
     for key, value in update_dict.items():
         with pytest.raises(AttributeError):

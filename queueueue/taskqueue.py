@@ -23,7 +23,7 @@ class Task(object):
     def __repr__(self):
         return "<{} [{}][{}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
 
-    def update(self, **data):
+    def complete(self, **data):
         for attr in ["stdout", "stderr", "result", "status", "traceback"]:
             if attr in data:
                 setattr(self, attr, data[attr])
@@ -119,7 +119,7 @@ class MultiLockPriorityPoolQueue(object):
             raise LookupError
 
         self._logger.info("Completed task {}".format(repr(task)))
-        task.update(**data)
+        task.complete(**data)
 
         for lock in task.locks:
             self._locks[lock].release()
