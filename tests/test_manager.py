@@ -1,8 +1,8 @@
+import json
 import socket
 import unittest
 import unittest.mock
 
-import json
 import asyncio
 import pytest
 from aiohttp import client
@@ -84,7 +84,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
         r = yield from client.options(
             "{}/".format(url), loop=self.loop)
         data = yield from r.json()
-        assert data["tasks"] == 0
+        assert data["tasks"]["pending"] == 0
         assert data["locks"]["taken"] == 0
         assert data["locks"]["free"] == 0
 
@@ -125,7 +125,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         data = yield from r.json()
         assert r.status == 200
-        assert data["tasks"] == 1
+        assert data["tasks"]["pending"] == 1
 
     @coroutine
     def test_queue_pool_required(self):
@@ -228,7 +228,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         data = yield from r.json()
         assert r.status == 200
-        assert data["tasks"] == 1
+        assert data["tasks"]["pending"] == 1
 
         r = yield from client.delete(
             "{}/task/{}".format(url, str(t.id)),
@@ -241,7 +241,8 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         data = yield from r.json()
         assert r.status == 200
-        assert data["tasks"] == 0
+        assert data["tasks"]["pending"] == 0
+        assert data["tasks"]["active"] == 0
 
     @coroutine
     def test_queue_task_work(self):
@@ -273,7 +274,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         assert r.status == 200
         data = yield from r.json()
-        assert data["tasks"] == 1
+        assert data["tasks"]["pending"] == 1
 
         r = yield from client.patch(
             "{}/task/pending".format(url), params={"pool": "pool"},
@@ -287,7 +288,8 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         assert r.status == 200
         data = yield from r.json()
-        assert data["tasks"] == 0
+        assert data["tasks"]["pending"] == 0
+        assert data["tasks"]["active"] == 1
         assert data["locks"]["taken"] == 3
         assert data["locks"]["free"] == 0
 
@@ -305,7 +307,8 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop)
         assert r.status == 200
         data = yield from r.json()
-        assert data["tasks"] == 0
+        assert data["tasks"]["pending"] == 0
+        assert data["tasks"]["active"] == 0
         assert data["locks"]["taken"] == 0
         assert data["locks"]["free"] == 3
 
@@ -327,6 +330,6 @@ class TestManagerTaskProcessing(unittest.TestCase):
             loop=self.loop, headers={"pretty": "true"})
         data = yield from r.json()
         assert r.status == 200
-        assert data["tasks"] == 1
+        assert data["tasks"]["pending"] == 1
         data_raw = yield from r.text()
         assert data_raw.find("\n") != -1

@@ -41,8 +41,8 @@ class TestTaskQueue(unittest.TestCase):
         q.get("pool")
 
         assert len(q._locks.items()) == 3
-        assert q.locks_taken == 3
-        assert q.locks_free == 0
+        assert len(q.locks_taken) == 3
+        assert len(q.locks_free) == 0
         assert 1 in q._locks
         assert 2 in q._locks
         assert 3 in q._locks

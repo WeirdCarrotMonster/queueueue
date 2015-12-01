@@ -1,8 +1,9 @@
 import logging
 import uuid
-import asyncio
 from collections import defaultdict
 from threading import Lock
+
+import asyncio
 
 
 class Task(object):
@@ -91,11 +92,19 @@ class MultiLockPriorityPoolQueue(object):
 
     @property
     def locks_free(self):
-        return len(list(filter(lambda l: not l.locked(), self._locks.values())))
+        return list(filter(lambda l: not l.locked(), self._locks.values()))
 
     @property
     def locks_taken(self):
-        return len(list(filter(lambda l: l.locked(), self._locks.values())))
+        return list(filter(lambda l: l.locked(), self._locks.values()))
+
+    @property
+    def tasks_pending(self):
+        return [task.id for task in self._tasks]
+
+    @property
+    def tasks_active(self):
+        return self._active_tasks.keys()
 
     def put(self, task):
         self._logger.info("Queued task {}".format(repr(task)))

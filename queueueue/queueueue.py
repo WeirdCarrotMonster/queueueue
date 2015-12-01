@@ -1,12 +1,11 @@
 #!/usr/bin/env python3.4
 
+import json
 import logging
 from email.base64mime import b64encode
 
-import json
-
 import asyncio
-from aiohttp import web, upstr
+from aiohttp import upstr, web
 
 from .taskqueue import MultiLockPriorityPoolQueue, Task
 
@@ -122,7 +121,23 @@ class Manager(object):
     @asyncio.coroutine
     def short_info(self, request):
         return JSONResponse({
-            "tasks": self._queue.task_count,
+            "tasks": {
+                "pending": len(self._queue.tasks_pending),
+                "active": len(self._queue.tasks_active)
+            },
+            "locks": {
+                "taken": len(self._queue.locks_taken),
+                "free": len(self._queue.locks_free)
+            }
+        }, pretty=request.pretty)
+
+    @asyncio.coroutine
+    def extended_info(self, request):
+        return JSONResponse({
+            "tasks": {
+                "pending": self._queue.tasks_pending,
+                "active": self._queue.tasks_active
+            },
             "locks": {
                 "taken": self._queue.locks_taken,
                 "free": self._queue.locks_free
