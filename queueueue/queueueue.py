@@ -6,7 +6,7 @@ from email.base64mime import b64encode
 import json
 
 import asyncio
-from aiohttp import web
+from aiohttp import web, upstr
 
 from .taskqueue import MultiLockPriorityPoolQueue, Task
 
@@ -25,10 +25,23 @@ def safe_int_conversion(value, default, min_val=None, max_val=None):
     return result
 
 
+@asyncio.coroutine
+def pretty_factory(app, handler):
+    pretty_key = upstr("pretty")
+
+    @asyncio.coroutine
+    def middleware(request):
+        pretty = request.headers.get(pretty_key, "false").upper() == "TRUE"
+        setattr(request, "pretty", pretty)
+        tmp = yield from handler(request)
+        return tmp
+    return middleware
+
+
 class JSONResponse(web.Response):
 
-    def __init__(self, data, **kwargs):
-        kwargs["text"] = json.dumps(data)
+    def __init__(self, data, pretty=False, **kwargs):
+        kwargs["text"] = json.dumps(data, indent="  " if pretty else None)
         kwargs["content_type"] = "application/json"
         super().__init__(**kwargs)
 
@@ -51,7 +64,7 @@ class Manager(object):
         else:
             self._auth = None
 
-        self._app = web.Application(loop=self._loop)
+        self._app = web.Application(loop=self._loop, middlewares=[pretty_factory])
         self._setup_routes()
 
         self._srv = None
@@ -87,7 +100,9 @@ class Manager(object):
         def wrapper(request, *args, **kwargs):
             if not request.headers.get("AUTHORIZATION") == self._auth:
                 self._logger.warning("Request with invalid auth credentials blocked: {} {}".format(request.method, request.path_qs))
-                return JSONResponse({"error": "Not authorized"}, status=403)
+                return JSONResponse({
+                    "error": "Not authorized"
+                }, status=403, pretty=request.pretty)
             return f(request, *args, **kwargs)
 
         return wrapper
@@ -112,7 +127,7 @@ class Manager(object):
                 "taken": self._queue.locks_taken,
                 "free": self._queue.locks_free
             }
-        })
+        }, pretty=request.pretty)
 
     @asyncio.coroutine
     def list_tasks(self, request):
@@ -127,7 +142,7 @@ class Manager(object):
 
         return JSONResponse([
             task.for_json() for task in self._queue.tasks[offset:offset + limit]
-        ])
+        ], pretty=request.pretty)
 
     @asyncio.coroutine
     def add_task(self, request):
@@ -142,7 +157,7 @@ class Manager(object):
         else:
             result = {"result": "success"}
 
-        return JSONResponse(result)
+        return JSONResponse(result, pretty=request.pretty)
 
     @asyncio.coroutine
     def get_task(self, request):
@@ -152,7 +167,7 @@ class Manager(object):
 
         task = self._queue.get(pool=pool)
         data = task.worker_info if task else None
-        return JSONResponse(data)
+        return JSONResponse(data, pretty=request.pretty)
 
     @asyncio.coroutine
     def complete_task(self, request):
@@ -162,15 +177,15 @@ class Manager(object):
         try:
             task = self._queue.complete(_id, data)
             yield from self.handle_result(task)
-            return JSONResponse({"result": "Success"})
+            return JSONResponse({"result": "Success"}, pretty=request.pretty)
         except LookupError:
-            return JSONResponse({"error": "Unknown task"}, status=404)
+            return JSONResponse({"error": "Unknown task"}, status=404, pretty=request.pretty)
 
     @asyncio.coroutine
     def delete_task(self, request):
         _id = request.match_info.get('task_id')
         try:
             self._queue.safe_remove(_id)
-            return JSONResponse({"result": "Success"})
+            return JSONResponse({"result": "Success"}, pretty=request.pretty)
         except LookupError:
-            return JSONResponse({"error": "Unknown task"}, status=404)
+            return JSONResponse({"error": "Unknown task"}, status=404, pretty=request.pretty)

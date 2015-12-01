@@ -3,7 +3,6 @@ import unittest
 import unittest.mock
 
 import json
-import aiohttp
 import asyncio
 import pytest
 from aiohttp import client
@@ -309,3 +308,25 @@ class TestManagerTaskProcessing(unittest.TestCase):
         assert data["tasks"] == 0
         assert data["locks"]["taken"] == 0
         assert data["locks"]["free"] == 3
+
+    @coroutine
+    def test_pretty_response(self):
+        url, _ = yield from self.create_server()
+        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+        data_raw = yield from r.text()
+        assert data_raw.find("\n") == -1
+
+        r = yield from client.options(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop, headers={"pretty": "true"})
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["tasks"] == 1
+        data_raw = yield from r.text()
+        assert data_raw.find("\n") != -1
