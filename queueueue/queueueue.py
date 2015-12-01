@@ -79,6 +79,7 @@ class Manager(object):
 
     def _setup_routes(self):
         self._add_route('OPTIONS', '/', self.short_info)
+        self._add_route('GET', '/', self.extended_info)
 
         self._add_route('GET', '/task', self.list_tasks)
         self._add_route('POST', '/task', self.add_task)
