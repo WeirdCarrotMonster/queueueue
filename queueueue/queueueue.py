@@ -136,8 +136,8 @@ class Manager(object):
     def extended_info(self, request):
         return JSONResponse({
             "tasks": {
-                "pending": self._queue.tasks_pending,
-                "active": self._queue.tasks_active
+                "pending": [str(task) for task in self._queue.tasks_pending],
+                "active": [str(task) for task in self._queue.tasks_active]
             },
             "locks": {
                 "taken": self._queue.locks_taken,
