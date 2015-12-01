@@ -84,9 +84,20 @@ class TestManagerTaskProcessing(unittest.TestCase):
         r = yield from client.options(
             "{}/".format(url), loop=self.loop)
         data = yield from r.json()
+
         assert data["tasks"]["pending"] == 0
+        assert data["tasks"]["active"] == 0
         assert data["locks"]["taken"] == 0
         assert data["locks"]["free"] == 0
+
+        r = yield from client.get(
+            "{}/".format(url), loop=self.loop)
+        data = yield from r.json()
+
+        assert len(data["tasks"]["pending"]) == 0
+        assert len(data["tasks"]["active"]) == 0
+        assert len(data["locks"]["taken"]) == 0
+        assert len(data["locks"]["free"]) == 0
 
     @coroutine
     def test_handle_auth(self):
@@ -126,6 +137,13 @@ class TestManagerTaskProcessing(unittest.TestCase):
         data = yield from r.json()
         assert r.status == 200
         assert data["tasks"]["pending"] == 1
+
+        r = yield from client.get(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert len(data["tasks"]["pending"]) == 1
 
     @coroutine
     def test_queue_pool_required(self):
