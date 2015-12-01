@@ -92,11 +92,21 @@ class MultiLockPriorityPoolQueue(object):
 
     @property
     def locks_free(self):
-        return list(filter(lambda l: not l.locked(), self._locks.values()))
+        return list(
+            data[0] for data in filter(
+                lambda data: not data[1].locked(),
+                self._locks.items()
+            )
+        )
 
     @property
     def locks_taken(self):
-        return list(filter(lambda l: l.locked(), self._locks.values()))
+        return list(
+            data[0] for data in filter(
+                lambda data: data[1].locked(),
+                self._locks.items()
+            )
+        )
 
     @property
     def tasks_pending(self):
@@ -104,7 +114,7 @@ class MultiLockPriorityPoolQueue(object):
 
     @property
     def tasks_active(self):
-        return self._active_tasks.keys()
+        return list(self._active_tasks.keys())
 
     def put(self, task):
         self._logger.info("Queued task {}".format(repr(task)))
