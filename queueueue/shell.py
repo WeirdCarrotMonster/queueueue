@@ -16,7 +16,7 @@ def build_handlers(manager, handlers):
 
             manager.result_handler(log_stdout)
         else:
-            raise ValueError("Unknown handler type {}".format(handler))
+            raise ValueError("Unknown handler type {0}".format(handler))
 
 
 def main():

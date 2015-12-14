@@ -25,7 +25,7 @@ class Task(object):
         self.completed = asyncio.Event()
 
     def __repr__(self):
-        return "<{} [{}][{}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
+        return "<{0} [{1}][{2}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
 
     def complete(self, **data):
         for attr in ["stdout", "stderr", "result", "status", "traceback"]:
@@ -117,9 +117,9 @@ class MultiLockPriorityPoolQueue(object):
         return list(self._active_tasks.keys())
 
     def put(self, task):
-        self._logger.info("Queued task {}".format(repr(task)))
+        self._logger.info("Queued task {0}".format(repr(task)))
         self._tasks.append(task)
-        self._logger.debug("Queue length: {}".format(len(self._tasks)))
+        self._logger.debug("Queue length: {0}".format(len(self._tasks)))
 
     def get(self, pool):
         for task in self._tasks:
@@ -134,8 +134,8 @@ class MultiLockPriorityPoolQueue(object):
             for lock in task.locks:
                 self._locks[lock].acquire()
 
-            self._logger.info("Sending task {}".format(repr(task)))
-            self._logger.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
+            self._logger.info("Sending task {0}".format(repr(task)))
+            self._logger.debug("Active locks: {0}".format([key for key, value in self._locks.items() if value.locked()]))
             return task
         return None
 
@@ -146,14 +146,14 @@ class MultiLockPriorityPoolQueue(object):
         if not task:
             raise LookupError
 
-        self._logger.info("Completed task {}".format(repr(task)))
+        self._logger.info("Completed task {0}".format(repr(task)))
         task.complete(**data)
 
         for lock in task.locks:
             self._locks[lock].release()
 
-        self._logger.debug("Queue length: {}".format(len(self._tasks)))
-        self._logger.debug("Active locks: {}".format([key for key, value in self._locks.items() if value.locked()]))
+        self._logger.debug("Queue length: {0}".format(len(self._tasks)))
+        self._logger.debug("Active locks: {0}".format([key for key, value in self._locks.items() if value.locked()]))
 
         return task
 
