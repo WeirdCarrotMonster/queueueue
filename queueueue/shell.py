@@ -53,4 +53,4 @@ def main():
         loop.run_until_complete(m.create_server())
         loop.run_forever()
     except KeyboardInterrupt:
-        pass
+        m.logger.info("Stopping server")
