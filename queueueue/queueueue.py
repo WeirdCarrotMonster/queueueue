@@ -126,10 +126,7 @@ class Manager(object):
                 "pending": len(self._queue.tasks_pending),
                 "active": len(self._queue.tasks_active)
             },
-            "locks": {
-                "taken": len(self._queue.locks_taken),
-                "free": len(self._queue.locks_free)
-            }
+            "locks": len(self._queue.locks)
         }, pretty=request.pretty)
 
     @asyncio.coroutine
@@ -139,10 +136,7 @@ class Manager(object):
                 "pending": [str(task) for task in self._queue.tasks_pending],
                 "active": [str(task) for task in self._queue.tasks_active]
             },
-            "locks": {
-                "taken": self._queue.locks_taken,
-                "free": self._queue.locks_free
-            }
+            "locks": list(self._queue.locks)
         }, pretty=request.pretty)
 
     @asyncio.coroutine

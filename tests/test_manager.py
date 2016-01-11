@@ -87,8 +87,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
 
         assert data["tasks"]["pending"] == 0
         assert data["tasks"]["active"] == 0
-        assert data["locks"]["taken"] == 0
-        assert data["locks"]["free"] == 0
+        assert data["locks"] == 0
 
         r = yield from client.get(
             "{}/".format(url), loop=self.loop)
@@ -96,8 +95,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
 
         assert len(data["tasks"]["pending"]) == 0
         assert len(data["tasks"]["active"]) == 0
-        assert len(data["locks"]["taken"]) == 0
-        assert len(data["locks"]["free"]) == 0
+        assert len(data["locks"]) == 0
 
     @coroutine
     def test_handle_auth(self):
@@ -308,8 +306,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
         data = yield from r.json()
         assert data["tasks"]["pending"] == 0
         assert data["tasks"]["active"] == 1
-        assert data["locks"]["taken"] == 3
-        assert data["locks"]["free"] == 0
+        assert data["locks"] == 3
 
         r = yield from client.patch(
             "{}/task/{}".format(url, str(t.id)),
@@ -327,8 +324,7 @@ class TestManagerTaskProcessing(unittest.TestCase):
         data = yield from r.json()
         assert data["tasks"]["pending"] == 0
         assert data["tasks"]["active"] == 0
-        assert data["locks"]["taken"] == 0
-        assert data["locks"]["free"] == 3
+        assert data["locks"] == 0
 
     @coroutine
     def test_pretty_response(self):

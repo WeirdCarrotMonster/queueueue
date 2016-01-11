@@ -23,7 +23,7 @@ class TestTaskQueue(unittest.TestCase):
 
         assert len(q._tasks) == 1
         assert q.task_count == 1
-        assert len(q._locks.items()) == 0
+        assert len(q._locks) == 0
 
     def test_queue_task_list_access(self):
         q = MultiLockPriorityPoolQueue()
@@ -40,9 +40,7 @@ class TestTaskQueue(unittest.TestCase):
         q.put(t)
         q.get("pool")
 
-        assert len(q._locks.items()) == 3
-        assert len(q.locks_taken) == 3
-        assert len(q.locks_free) == 0
+        assert len(q._locks) == 3
         assert 1 in q._locks
         assert 2 in q._locks
         assert 3 in q._locks
@@ -56,7 +54,7 @@ class TestTaskQueue(unittest.TestCase):
         q.put(t2)
         task1 = q.get("pool")
         assert task1.args[0] == 1
-        assert len(q._locks.items()) == 3
+        assert len(q._locks) == 3
 
         task2 = q.get("pool")
         assert task2 is None
@@ -71,11 +69,11 @@ class TestTaskQueue(unittest.TestCase):
 
         task1 = q.get("pool")
         assert task1.args[0] == 1
-        assert len(q._locks.items()) == 3
+        assert len(q._locks) == 3
 
         task2 = q.get("pool")
         assert task2.args[0] == 2
-        assert len(q._locks.items()) == 6
+        assert len(q._locks) == 6
 
     def test_queue_pools(self):
         q = MultiLockPriorityPoolQueue()
@@ -116,10 +114,10 @@ class TestTaskQueue(unittest.TestCase):
         q.put(t1)
 
         task = q.get("pool")
-        assert len(q._locks.items()) == 3
+        assert len(q._locks) == 3
         q.complete(str(task.id), {"stdout": "", "stderr": "", "result": "", "status": "success"})
 
-        assert all(not lock.locked() for lock in q._locks.values())
+        assert len(q._locks) == 0
 
     def test_queue_safe_remove_active(self):
         q = MultiLockPriorityPoolQueue()
@@ -128,14 +126,14 @@ class TestTaskQueue(unittest.TestCase):
         q.put(t)
         q.get("pool")
 
-        assert len(q._locks.items()) == 3
+        assert len(q._locks) == 3
         assert 1 in q._locks
         assert 2 in q._locks
         assert 3 in q._locks
 
         q.safe_remove(str(t.id))
 
-        assert all(not lock.locked() for lock in q._locks.values())
+        assert len(q._locks) == 0
 
     def test_queue_safe_remove_pending(self):
         q = MultiLockPriorityPoolQueue()
@@ -143,17 +141,17 @@ class TestTaskQueue(unittest.TestCase):
 
         q.put(t)
 
-        assert len(q._locks.items()) == 0
+        assert len(q._locks) == 0
 
         q.safe_remove(str(t.id))
 
-        assert all(not lock.locked() for lock in q._locks.values())
+        assert len(q._locks) == 0
 
     def test_queue_safe_remove_not_existing(self):
         q = MultiLockPriorityPoolQueue()
         t = Task("test_task", [1, 2, 3], "pool", [], {})
 
-        assert len(q._locks.items()) == 0
+        assert len(q._locks) == 0
 
         with pytest.raises(LookupError):
             q.safe_remove(str(t.id))
