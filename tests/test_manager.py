@@ -33,9 +33,9 @@ def test_manager_add_handler():
 
 
 def test_manager_create_invalid_auth():
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         Manager(auth=("username",))
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         Manager(auth=["username"])
 
 

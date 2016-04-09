@@ -42,8 +42,10 @@ class Manager(object):
         self.logger = logging.getLogger("queueueue")
 
         if auth:
-            assert type(auth) == tuple, "Auth credentials must be a tuple, {} provided".format(type(auth))
-            assert len(auth) == 2, "Auth credentials must be a tuple of two strings, {} provided".format(len(auth))
+            if not isinstance(auth, tuple):
+                raise TypeError("Auth credentials must be a tuple, got {}", type(auth))
+            if len(auth) != 2:
+                raise ValueError("Auth credentials must be a tuple of two, got {}", len(auth))
             self._auth = "Basic {}".format(
                 b64encode(bytes("{}:{}".format(auth[0], auth[1]), "utf-8")).decode()
             )
