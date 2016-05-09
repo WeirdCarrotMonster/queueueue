@@ -109,7 +109,11 @@ class MultiLockPriorityPoolQueue(object):
     def tasks_active(self):
         return list(self._active_tasks.keys())
 
-    def put(self, task):
+    def put(self, task, unique=False):
+        if unique and task in self._tasks:
+            self._logger.info("Task {0} not unique".format(repr(task)))
+            return
+
         self._logger.info("Queued task {0}".format(repr(task)))
         self._tasks.append(task)
         self._logger.debug("Queue length: {0}".format(len(self._tasks)))

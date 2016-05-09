@@ -144,6 +144,111 @@ class TestManagerTaskProcessing(unittest.TestCase):
         assert len(data["tasks"]["pending"]) == 1
 
     @coroutine
+    def test_queue_add_unique(self):
+        url, _ = yield from self.create_server()
+
+        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t2.for_json()),
+            loop=self.loop, params={"unique": "true"})
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.options(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["tasks"]["pending"] == 1
+
+        r = yield from client.get(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert len(data["tasks"]["pending"]) == 1
+
+    @coroutine
+    def test_queue_add_equal_not_unique(self):
+        url, _ = yield from self.create_server()
+
+        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t2.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.options(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["tasks"]["pending"] == 2
+
+        r = yield from client.get(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert len(data["tasks"]["pending"]) == 2
+
+    @coroutine
+    def test_queue_add_unique_not_equal(self):
+        url, _ = yield from self.create_server()
+
+        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+        t2 = Task("test_task", [1, 2, 3, 4], "pool", [1], {})
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.post(
+            "{}/task".format(url), data=json.dumps(t2.for_json()),
+            loop=self.loop, params={"unique": "true"})
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["result"] == "success"
+
+        r = yield from client.options(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert data["tasks"]["pending"] == 2
+
+        r = yield from client.get(
+            "{}/".format(url), data=json.dumps(t.for_json()),
+            loop=self.loop)
+        data = yield from r.json()
+        assert r.status == 200
+        assert len(data["tasks"]["pending"]) == 2
+
+    @coroutine
     def test_queue_pool_required(self):
         url, _ = yield from self.create_server()
         t = Task("test_task", [1, 2, 3], "pool", [1], {})

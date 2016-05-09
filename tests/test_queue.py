@@ -25,6 +25,19 @@ class TestTaskQueue(unittest.TestCase):
         assert q.task_count == 1
         assert len(q._locks) == 0
 
+    def test_queue_add_unique(self):
+        q = MultiLockPriorityPoolQueue()
+        t = Task("test_task", [], "pool", [], {})
+        t2 = Task("test_task", [], "pool", [], {})
+
+        q.put(t)
+        q.put(t2, unique=True)
+
+        assert len(q._tasks) == 1
+        assert q._tasks[0].id == t.id
+        assert q.task_count == 1
+        assert len(q._locks) == 0
+
     def test_queue_task_list_access(self):
         q = MultiLockPriorityPoolQueue()
         t = Task("test_task", [], "pool", [], {})

@@ -1,6 +1,7 @@
-import pytest
 import unittest
+
 import asyncio
+import pytest
 from queueueue.taskqueue import Task
 
 
@@ -83,3 +84,11 @@ class TestTask(unittest.TestCase):
         t = Task("test_task", [1, 2, 3], "pool", [1], {})
 
         assert type(t.for_json()) == dict
+
+    def test_task_equality(self):
+        t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+        t3 = Task("test_task", [1, 2, 3, 4], "pool", [1], {})
+
+        assert t1 == t2
+        assert t1 != t3

@@ -148,9 +148,12 @@ class Manager(object):
     def add_task(self, request):
         data = yield from request.json()
         task = Task(**data)
-        self._queue.put(task)
 
-        wait = request.GET.get("wait") == "true"
+        unique = request.GET.get("unique", "").lower() == "true"
+        wait = request.GET.get("wait", "").lower() == "true"
+
+        self._queue.put(task, unique=unique)
+
         if wait:
             yield from task.completed.wait()
             result = task.completed.data
