@@ -25,6 +25,15 @@ class Task(object):
     def __repr__(self):
         return "<{0} [{1}][{2}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
 
+    def __eq__(self, other):
+        """Compares two task objects by their initial params."""
+        return (
+            self.name == other.name and
+            self.locks == other.locks and
+            self.args == other.args and
+            self.kwargs == other.kwargs
+        )
+
     def complete(self, **data):
         for attr in ["stdout", "stderr", "result", "status", "traceback"]:
             if attr in data:
