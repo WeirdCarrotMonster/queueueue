@@ -1,7 +1,8 @@
-import pytest
-import uuid
 import unittest
+import uuid
+
 import asyncio
+import pytest
 from queueueue.taskqueue import MultiLockPriorityPoolQueue, Task
 
 

@@ -10,6 +10,7 @@ def build_handlers(manager, handlers):
     for handler in handlers:
         if handler.startswith("stdout://"):
             stdout_format = handler[9:]
+
             @asyncio.coroutine
             def log_stdout(message):
                 print(stdout_format.format(**message.full_info))
