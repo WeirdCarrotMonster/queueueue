@@ -111,12 +111,12 @@ class MultiLockPriorityPoolQueue(object):
 
     def put(self, task, unique=False):
         if unique and task in self._tasks:
-            self._logger.info("Task {0} not unique".format(repr(task)))
+            self._logger.info("Task %s not unique", repr(task))
             return
 
-        self._logger.info("Queued task {0}".format(repr(task)))
+        self._logger.info("Queued task %s", repr(task))
         self._tasks.append(task)
-        self._logger.debug("Queue length: {0}".format(len(self._tasks)))
+        self._logger.debug("Queue length: %s", len(self._tasks))
 
     def get(self, pool):
         for task in self._tasks:
@@ -130,8 +130,8 @@ class MultiLockPriorityPoolQueue(object):
 
             self._locks |= task.locks
 
-            self._logger.info("Sending task {0}".format(repr(task)))
-            self._logger.debug("Active locks: {0}".format(self.locks))
+            self._logger.info("Sending task %s", repr(task))
+            self._logger.debug("Active locks: %s", self.locks)
             return task
         return None
 
@@ -142,13 +142,13 @@ class MultiLockPriorityPoolQueue(object):
         if not task:
             raise LookupError
 
-        self._logger.info("Completed task {0}".format(repr(task)))
+        self._logger.info("Completed task %s", repr(task))
         task.complete(**data)
 
         self._locks -= task.locks
 
-        self._logger.debug("Queue length: {0}".format(len(self._tasks)))
-        self._logger.debug("Active locks: {0}".format(self.locks))
+        self._logger.debug("Queue length: %s", len(self._tasks))
+        self._logger.debug("Active locks: %s", self.locks)
 
         return task
 
