@@ -7,10 +7,10 @@ python:
   - "3.6"
 
 install:
-  - pip install . tox-travis coveralls
+  - pip install . pytest pytest-aiohttp pytest-coverage
 
 script:
-  - tox
+  - py.test --cov=queueueue
 
 after_success:
   - coveralls
