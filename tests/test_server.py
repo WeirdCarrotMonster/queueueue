@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from queueueue.app import build_app
@@ -199,3 +201,48 @@ async def test_queue_task_work_process(cli):
     response = await cli.get("/task")
     data = await response.json()
     assert len(data) == 0
+
+
+async def test_queue_add_wait_complete(cli):
+    task = Task("test_task", ["1"], "pool", [1], {})
+
+    long_response = cli.post("/task", json=task.for_json(), params={"wait": "true"})
+    long_response = asyncio.ensure_future(long_response)
+
+    async def task_getter():
+        for _ in range(3):
+            response = await cli.patch(
+                "/task/pending",
+                params={"pool": "pool"}
+            )
+            data = await response.json()
+
+            if data:
+                return data
+        else:
+            raise Exception("Failed to long-poll task")
+
+    get_task = asyncio.ensure_future(task_getter())
+
+    done, pending = await asyncio.wait(
+        [
+            long_response,
+            get_task
+        ],
+        return_when=asyncio.FIRST_COMPLETED
+    )
+
+    assert get_task in done
+
+    response = await cli.patch(
+        "/task/{}".format(str(task.id)),
+        json={"stdout": "", "stderr": "", "result": "test_result", "status": "success"}
+    )
+    assert response.status == 200
+
+    response = await long_response
+    assert response.status == 200
+
+    data = await response.json()
+    assert isinstance(data, dict)
+    assert data["result"] == "test_result"
