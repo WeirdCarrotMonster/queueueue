@@ -93,9 +93,9 @@ class Task(object):
 class MultiLockPriorityPoolQueue(object):
 
     def __init__(self):
-        self._locks: Set[str] = set()
-        self._tasks: List[Task] = []
-        self._active_tasks: Dict[uuid.UUID, Task] = {}
+        self._locks = set()  # type: Set[str]
+        self._tasks = []  # type: List[Task]
+        self._active_tasks = {}  # type: Dict[uuid.UUID, Task]
         self._logger = logging.getLogger("Queue")
 
     @property
