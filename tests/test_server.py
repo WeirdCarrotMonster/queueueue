@@ -176,7 +176,7 @@ async def test_delete_task(cli):
 
 
 async def test_queue_task_work_process(cli):
-    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    t1 = Task("test_task", ["1", "2", "3"], "pool", [1], {})
     await cli.post("/task", json=t1.for_json())
 
     response = await cli.get("/task")
@@ -198,6 +198,12 @@ async def test_queue_task_work_process(cli):
     assert t1.id not in cli.server.app["queue"].tasks_pending
     assert t1.id in cli.server.app["queue"].tasks_active
     assert len(data) == 0
+
+    response = await cli.get("/task/taken")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
+    taken_date = data[0]["taken"]
 
     response = await cli.patch(
         "/task/{}".format(str(t1.id)),

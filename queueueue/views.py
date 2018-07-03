@@ -41,6 +41,23 @@ async def list_tasks(request):
 
 
 @authenticate
+async def list_taken_tasks(request):
+    offset = safe_int_conversion(
+        request.query.get("offset"), 0,
+        min_val=0, max_val=request.app["queue"].task_count
+    )
+    limit = safe_int_conversion(
+        request.query.get("limit"), 50,
+        min_val=1, max_val=50
+    )
+
+    return json_response([
+        task.for_json()
+        for task in request.app["queue"].tasks_taken[offset:offset + limit]
+    ])
+
+
+@authenticate
 async def add_task(request):
     data = await request.json()
     task = Task(**data)

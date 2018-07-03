@@ -8,6 +8,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def setup_routes(app: "web.Application"):
     app.router.add_route('GET', '/task', views.list_tasks)
+    app.router.add_route('GET', '/task/taken', views.list_taken_tasks)
     app.router.add_route('POST', '/task', views.add_task)
 
     app.router.add_route('PATCH', '/task/pending', views.get_task)

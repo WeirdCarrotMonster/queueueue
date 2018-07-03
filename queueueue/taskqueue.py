@@ -116,6 +116,10 @@ class MultiLockPriorityPoolQueue(object):
         return tuple(self._tasks)
 
     @property
+    def tasks_taken(self) -> Tuple[Task, ...]:
+        return tuple(self._active_tasks.values())
+
+    @property
     def locks(self) -> FrozenSet[str]:
         return frozenset(self._locks)
 
