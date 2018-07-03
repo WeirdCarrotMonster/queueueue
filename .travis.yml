@@ -1,10 +1,14 @@
 language: python
+
 python:
-  - "3.4"
   - "3.5"
+  - "3.6"
+
 install:
-  - python setup.py develop
-  - pip install coveralls
-  - pip install pytest-cov
-script: py.test
-after_success: coveralls
+  - pip install . tox-travis
+
+script:
+  - tox
+
+after_success:
+  - coveralls
