@@ -1,78 +1,22 @@
-import json
-import socket
-import unittest.mock
-
-import asyncio
 import pytest
-import aiohttp
-from queueueue.queueueue import Manager, safe_int_conversion
+
+from queueueue.app import build_app
+from queueueue.routes import setup_routes
 from queueueue.taskqueue import Task
-
-
-def test_manager_create():
-    Manager()
-
-
-def test_manager_create_auth():
-    Manager(auth=("username", "password"))
-
-
-def test_manager_add_handler():
-    m = Manager()
-
-    @m.result_handler
-    @asyncio.coroutine
-    def sample(result):
-        pass
-
-    with pytest.raises(AssertionError):
-        @m.result_handler
-        def not_a_handler(result):
-            pass
-
-
-def test_manager_create_invalid_auth():
-    with pytest.raises(ValueError):
-        Manager(auth=("username",))
-    with pytest.raises(TypeError):
-        Manager(auth=["username"])
-
-
-def test_save_int_conversion():
-    assert safe_int_conversion(None, 10) == 10
-    assert safe_int_conversion("10", 0) == 10
-    assert safe_int_conversion(10, 10) == 10
-    assert safe_int_conversion(10, 10, max_val=5) == 5
-    assert safe_int_conversion(10, 10, min_val=15) == 15
-
-
-def coroutine(f):
-    def wrapper(self, *args, **kwargs):
-        return self.loop.run_until_complete(asyncio.coroutine(f)(self, *args, **kwargs))
-
-    return wrapper
 
 
 @pytest.fixture
 def cli(loop, aiohttp_client):
-    manager = Manager(loop=loop)
-    return loop.run_until_complete(aiohttp_client(manager._app))
+    app = build_app()
+    setup_routes(app)
+    return loop.run_until_complete(aiohttp_client(app))
 
 
 async def test_handle_request(cli):
-    response = await cli.options("/")
+    response = await cli.get("/task")
     data = await response.json()
 
-    assert data["tasks"]["pending"] == 0
-    assert data["tasks"]["active"] == 0
-    assert data["locks"] == 0
-
-    response = await cli.get("/")
-    data = await response.json()
-
-    assert len(data["tasks"]["pending"]) == 0
-    assert len(data["tasks"]["active"]) == 0
-    assert len(data["locks"]) == 0
+    assert len(data) == 0
 
 
 async def test_queue_add(cli):
@@ -82,15 +26,10 @@ async def test_queue_add(cli):
     data = await response.json()
     assert data["result"] == "success"
 
-    response = await cli.options("/")
+    response = await cli.get("/task")
     assert response.status == 200
     data = await response.json()
-    assert data["tasks"]["pending"] == 1
-
-    response = await cli.get("/")
-    assert response.status == 200
-    data = await response.json()
-    assert len(data["tasks"]["pending"]) == 1
+    assert len(data) == 1
 
 
 async def test_queue_add_unique(cli):
@@ -234,11 +173,10 @@ async def test_queue_task_work_process(cli):
     t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
     await cli.post("/task", json=t1.for_json())
 
-    response = await cli.get("/")
+    response = await cli.get("/task")
     assert response.status == 200
     data = await response.json()
-    assert len(data["tasks"]["pending"]) == 1
-    assert len(data["tasks"]["active"]) == 0
+    assert len(data) == 1
 
     response = await cli.patch(
         "/task/pending",
@@ -248,11 +186,9 @@ async def test_queue_task_work_process(cli):
     data = await response.json()
     assert data["id"] == str(t1.id)
 
-    response = await cli.get("/")
+    response = await cli.get("/task")
     data = await response.json()
-    assert len(data["tasks"]["pending"]) == 0
-    assert len(data["tasks"]["active"]) == 1
-    assert len(data["locks"]) == 3
+    assert len(data) == 0
 
     response = await cli.patch(
         "/task/{}".format(str(t1.id)),
@@ -260,8 +196,6 @@ async def test_queue_task_work_process(cli):
     )
     assert response.status == 200
 
-    response = await cli.get("/")
+    response = await cli.get("/task")
     data = await response.json()
-    assert len(data["tasks"]["pending"]) == 0
-    assert len(data["tasks"]["active"]) == 0
-    assert len(data["locks"]) == 0
+    assert len(data) == 0

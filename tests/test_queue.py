@@ -45,7 +45,7 @@ class TestTaskQueue(unittest.TestCase):
 
         q.put(t)
 
-        assert q.tasks is q._tasks
+        assert q.tasks is not q._tasks
 
     def test_queue_use_locks(self):
         q = MultiLockPriorityPoolQueue()

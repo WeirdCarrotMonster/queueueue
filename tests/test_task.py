@@ -2,7 +2,7 @@ import unittest
 
 import asyncio
 import pytest
-from queueueue.taskqueue import Task
+from queueueue.views import Task
 
 
 class TestTask(unittest.TestCase):
