@@ -1,11 +1,10 @@
 import json
 import socket
-import unittest
 import unittest.mock
 
 import asyncio
 import pytest
-from aiohttp import client
+import aiohttp
 from queueueue.queueueue import Manager, safe_int_conversion
 from queueueue.taskqueue import Task
 
@@ -54,379 +53,215 @@ def coroutine(f):
     return wrapper
 
 
-class TestManagerTaskProcessing(unittest.TestCase):
+@pytest.fixture
+def cli(loop, aiohttp_client):
+    manager = Manager(loop=loop)
+    return loop.run_until_complete(aiohttp_client(manager._app))
 
-    def setUp(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
 
-    def tearDown(self):
-        pass
+async def test_handle_request(cli):
+    response = await cli.options("/")
+    data = await response.json()
 
-    def find_unused_port(self):
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind(('127.0.0.1', 0))
-        port = s.getsockname()[1]
-        s.close()
-        return port
+    assert data["tasks"]["pending"] == 0
+    assert data["tasks"]["active"] == 0
+    assert data["locks"] == 0
 
-    @asyncio.coroutine
-    def create_server(self, *args, **kwargs):
-        port = self.find_unused_port()
-        manager = Manager(loop=self.loop, port=port, *args, **kwargs)
-        srv = yield from manager.create_server()
-        self.addCleanup(srv.close)
-        return "http://127.0.0.1:{}".format(port), manager
+    response = await cli.get("/")
+    data = await response.json()
 
-    @coroutine
-    def test_handle_request(self):
-        url, _ = yield from self.create_server()
-        r = yield from client.options(
-            "{}/".format(url), loop=self.loop)
-        data = yield from r.json()
+    assert len(data["tasks"]["pending"]) == 0
+    assert len(data["tasks"]["active"]) == 0
+    assert len(data["locks"]) == 0
 
-        assert data["tasks"]["pending"] == 0
-        assert data["tasks"]["active"] == 0
-        assert data["locks"] == 0
 
-        r = yield from client.get(
-            "{}/".format(url), loop=self.loop)
-        data = yield from r.json()
+async def test_queue_add(cli):
+    task = Task("test_task", [1, 2, 3], "pool", [1], {})
+    response = await cli.post("/task", json=task.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        assert len(data["tasks"]["pending"]) == 0
-        assert len(data["tasks"]["active"]) == 0
-        assert len(data["locks"]) == 0
+    response = await cli.options("/")
+    assert response.status == 200
+    data = await response.json()
+    assert data["tasks"]["pending"] == 1
 
-    @coroutine
-    def test_handle_auth(self):
-        url, _ = yield from self.create_server(auth=("username", "password"))
-        r = yield from client.options(
-            "{}/".format(url), loop=self.loop, auth=("username", "password"))
-        yield from r.release()
-        assert r.status == 200
+    response = await cli.get("/")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data["tasks"]["pending"]) == 1
 
-    @coroutine
-    def test_invalid_auth(self):
-        url, _ = yield from self.create_server(auth=("username", "password"))
-        r = yield from client.options(
-            "{}/".format(url), loop=self.loop)
-        yield from r.release()
-        assert r.status == 403
 
-        r = yield from client.options(
-            "{}/".format(url), loop=self.loop, auth=("username", "wrong_password"))
-        yield from r.release()
-        assert r.status == 403
+async def test_queue_add_unique(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-    @coroutine
-    def test_queue_add(self):
-        url, _ = yield from self.create_server()
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.post("/task", json=t1.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.options(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 1
+    response = await cli.post(
+        "/task", json=t2.for_json(), params={"unique": "true"})
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.get(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert len(data["tasks"]["pending"]) == 1
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
 
-    @coroutine
-    def test_queue_add_unique(self):
-        url, _ = yield from self.create_server()
 
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+async def test_queue_add_equal_not_unique(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.post("/task", json=t1.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t2.for_json()),
-            loop=self.loop, params={"unique": "true"})
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.post("/task", json=t2.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.options(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 1
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 2
 
-        r = yield from client.get(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert len(data["tasks"]["pending"]) == 1
 
-    @coroutine
-    def test_queue_add_equal_not_unique(self):
-        url, _ = yield from self.create_server()
+async def test_queue_add_unique_not_equal(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    t2 = Task("test_task", [1, 2, 3, 4], "pool", [1], {})
 
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    response = await cli.post("/task", json=t1.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.post(
+        "/task", json=t2.for_json(), params={"unique": "true"})
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t2.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 2
 
-        r = yield from client.options(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 2
 
-        r = yield from client.get(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert len(data["tasks"]["pending"]) == 2
+async def test_queue_pool_required(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    await cli.post("/task", json=t1.for_json())
 
-    @coroutine
-    def test_queue_add_unique_not_equal(self):
-        url, _ = yield from self.create_server()
+    response = await cli.patch("/task/pending")
+    assert response.status == 200
+    data = await response.json()
+    assert data is None
 
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-        t2 = Task("test_task", [1, 2, 3, 4], "pool", [1], {})
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+async def test_queue_view_tasks(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t2.for_json()),
-            loop=self.loop, params={"unique": "true"})
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    await cli.post("/task", json=t1.for_json())
+    await cli.post("/task", json=t2.for_json())
 
-        r = yield from client.options(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 2
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 2
 
-        r = yield from client.get(
-            "{}/".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert len(data["tasks"]["pending"]) == 2
+    response = await cli.get("/task", params={"limit": 1})
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == str(t1.id)
 
-    @coroutine
-    def test_queue_pool_required(self):
-        url, _ = yield from self.create_server()
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
+    response = await cli.get("/task", params={"offset": 1})
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == str(t2.id)
 
-        r = yield from client.patch(
-            "{}/task/pending".format(url),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data is None
 
-    @coroutine
-    def test_queue_view_tasks(self):
-        url, _ = yield from self.create_server()
-        t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
-        t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
+async def test_complete_unknown_task(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t1.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
+    response = await cli.patch(
+        "/task/{}".format(str(t1.id)),
+        json={"stdout": "", "stderr": "", "result": "", "status": "success"}
+    )
+    assert response.status == 404
+    data = await response.json()
+    assert data["error"] == "Unknown task"
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t2.for_json()),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["result"] == "success"
 
-        r = yield from client.get(
-            "{}/task".format(url),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert len(data) == 2
+async def test_delete_unknown_task(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-        r = yield from client.get(
-            "{}/task".format(url),
-            params={"limit": 1},
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert len(data) == 1
-        assert data[0]["id"] == str(t1.id)
+    response = await cli.delete("/task/{}".format(str(t1.id)))
+    assert response.status == 404
+    data = await(response.json())
+    assert data["error"] == "Unknown task"
 
-        r = yield from client.get(
-            "{}/task".format(url),
-            params={"offset": 1},
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert len(data) == 1
-        assert data[0]["id"] == str(t2.id)
 
-    @coroutine
-    def test_complete_unknown_task(self):
-        url, _ = yield from self.create_server()
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+async def test_delete_task(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
-        r = yield from client.patch(
-            "{}/task/{}".format(url, str(t.id)),
-            data=json.dumps({"stdout": "", "stderr": "", "result": "", "status": "success"}),
-            loop=self.loop)
-        assert r.status == 404
-        data = yield from r.json()
-        assert data["error"] == "Unknown task"
+    await cli.post("/task", json=t1.for_json())
 
-    @coroutine
-    def test_delete_unknown_task(self):
-        url, _ = yield from self.create_server()
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
 
-        r = yield from client.delete(
-            "{}/task/{}".format(url, str(t.id)),
-            loop=self.loop)
-        assert r.status == 404
-        data = yield from r.json()
-        assert data["error"] == "Unknown task"
+    response = await cli.delete("/task/{}".format(str(t1.id)))
+    assert response.status == 200
 
-    @coroutine
-    def test_delete_task(self):
-        url, _ = yield from self.create_server()
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 0
 
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        yield from r.release()
 
-        r = yield from client.options(
-            "{}/".format(url),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 1
+async def test_queue_task_work_process(cli):
+    t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
+    await cli.post("/task", json=t1.for_json())
 
-        r = yield from client.delete(
-            "{}/task/{}".format(url, str(t.id)),
-            loop=self.loop)
-        yield from r.release()
-        assert r.status == 200
+    response = await cli.get("/")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data["tasks"]["pending"]) == 1
+    assert len(data["tasks"]["active"]) == 0
 
-        r = yield from client.options(
-            "{}/".format(url),
-            loop=self.loop)
-        data = yield from r.json()
-        assert r.status == 200
-        assert data["tasks"]["pending"] == 0
-        assert data["tasks"]["active"] == 0
+    response = await cli.patch(
+        "/task/pending",
+        params={"pool": "pool"}
+    )
+    assert response.status == 200
+    data = await response.json()
+    assert data["id"] == str(t1.id)
 
-    @coroutine
-    def test_queue_task_work(self):
-        url, manager = yield from self.create_server()
+    response = await cli.get("/")
+    data = await response.json()
+    assert len(data["tasks"]["pending"]) == 0
+    assert len(data["tasks"]["active"]) == 1
+    assert len(data["locks"]) == 3
 
-        result_storage = []
+    response = await cli.patch(
+        "/task/{}".format(str(t1.id)),
+        json={"stdout": "", "stderr": "", "result": "", "status": "success"}
+    )
+    assert response.status == 200
 
-        @manager.result_handler
-        @asyncio.coroutine
-        def store_result(result):
-            result_storage.append(result)
-
-        @manager.result_handler
-        @asyncio.coroutine
-        def bad_function(result):
-            raise Exception()
-
-        t = Task("test_task", [1, 2, 3], "pool", [1], {})
-
-        r = yield from client.post(
-            "{}/task".format(url), data=json.dumps(t.for_json()),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data["result"] == "success"
-
-        r = yield from client.options(
-            "{}/".format(url),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data["tasks"]["pending"] == 1
-
-        r = yield from client.patch(
-            "{}/task/pending".format(url), params={"pool": "pool"},
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data["id"] == str(t.id)
-
-        r = yield from client.options(
-            "{}/".format(url),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data["tasks"]["pending"] == 0
-        assert data["tasks"]["active"] == 1
-        assert data["locks"] == 3
-
-        r = yield from client.patch(
-            "{}/task/{}".format(url, str(t.id)),
-            data=json.dumps({"stdout": "", "stderr": "", "result": "", "status": "success"}),
-            loop=self.loop)
-        assert r.status == 200
-        yield from r.release()
-
-        assert len(result_storage) == 1
-
-        r = yield from client.options(
-            "{}/".format(url),
-            loop=self.loop)
-        assert r.status == 200
-        data = yield from r.json()
-        assert data["tasks"]["pending"] == 0
-        assert data["tasks"]["active"] == 0
-        assert data["locks"] == 0
+    response = await cli.get("/")
+    data = await response.json()
+    assert len(data["tasks"]["pending"]) == 0
+    assert len(data["tasks"]["active"]) == 0
+    assert len(data["locks"]) == 0
