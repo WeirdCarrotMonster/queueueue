@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING
 
 from . import views
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from aiohttp import web
 
 

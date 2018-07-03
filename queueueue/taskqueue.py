@@ -33,7 +33,7 @@ class Task(object):
         return "<{0} [{1}][{2}]>".format(self.name, self.id, ",".join(str(_) for _ in self.locks))
 
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Task):
+        if not isinstance(other, Task):  # pragma: no cover
             return False
 
         return (

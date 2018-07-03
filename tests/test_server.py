@@ -178,6 +178,7 @@ async def test_queue_task_work_process(cli):
     response = await cli.get("/task")
     assert response.status == 200
     data = await response.json()
+    assert t1.id in cli.server.app["queue"].tasks_pending
     assert len(data) == 1
 
     response = await cli.patch(
@@ -190,6 +191,8 @@ async def test_queue_task_work_process(cli):
 
     response = await cli.get("/task")
     data = await response.json()
+    assert t1.id not in cli.server.app["queue"].tasks_pending
+    assert t1.id in cli.server.app["queue"].tasks_active
     assert len(data) == 0
 
     response = await cli.patch(
