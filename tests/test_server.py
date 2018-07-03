@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from queueueue.app import build_app
+from queueueue.app import build_app, setup_basic_auth, get_encoded_auth, setup_bearer_auth
 from queueueue.routes import setup_routes
 from queueueue.taskqueue import Task
 
@@ -246,3 +246,56 @@ async def test_queue_add_wait_complete(cli):
     data = await response.json()
     assert isinstance(data, dict)
     assert data["result"] == "test_result"
+
+
+async def test_basic_auth_forbidden(cli):
+    app = cli.server.app
+
+    setup_basic_auth(app, ["username:password"])
+
+    response = await cli.get("/task")
+    assert response.status == 403
+
+
+async def test_basic_auth_passing(cli):
+    app = cli.server.app
+
+    setup_basic_auth(app, ["username:password"])
+
+    auth = "Basic " + get_encoded_auth("username", "password")
+    response = await cli.get("/task", headers={"Authorization": auth})
+    assert response.status == 200
+
+
+async def test_bearer_auth_forbidden(cli):
+    app = cli.server.app
+
+    setup_bearer_auth(app, ["really_long_token"])
+
+    response = await cli.get("/task")
+    assert response.status == 403
+
+
+async def test_bearer_auth_passing(cli):
+    app = cli.server.app
+
+    setup_bearer_auth(app, ["really_long_token"])
+
+    auth = "Bearer really_long_token"
+    response = await cli.get("/task", headers={"Authorization": auth})
+    assert response.status == 200
+
+
+async def test_mixed_auth_passing(cli):
+    app = cli.server.app
+
+    setup_bearer_auth(app, ["really_long_token"])
+    setup_basic_auth(app, ["username:password"])
+
+    auth = "Basic " + get_encoded_auth("username", "password")
+    response = await cli.get("/task", headers={"Authorization": auth})
+    assert response.status == 200
+
+    auth = "Bearer really_long_token"
+    response = await cli.get("/task", headers={"Authorization": auth})
+    assert response.status == 200
