@@ -7,7 +7,8 @@ python:
   - "3.6"
 
 install:
-  - pip install . pytest pytest-aiohttp pytest-coverage
+  - pip install -e .
+  - pip install pytest pytest-aiohttp pytest-coverage coveralls
 
 script:
   - py.test --cov=queueueue
