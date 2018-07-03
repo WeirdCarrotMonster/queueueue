@@ -56,9 +56,8 @@ class Manager(object):
 
         self._srv = None
 
-    @asyncio.coroutine
-    def create_server(self):
-        self._srv = yield from self._loop.create_server(
+    async def create_server(self):
+        self._srv = await self._loop.create_server(
             self._app.make_handler(),
             self._host, self._port
         )
@@ -89,8 +88,7 @@ class Manager(object):
         if not self._auth:
             return f
 
-        @asyncio.coroutine
-        def wrapper(request, *args, **kwargs):
+        async def wrapper(request, *args, **kwargs):
             if not request.headers.get("AUTHORIZATION") == self._auth:
                 self.logger.warning(
                     "Request with invalid auth credentials blocked: %s %s",
@@ -106,16 +104,14 @@ class Manager(object):
         assert asyncio.iscoroutinefunction(f), "Result handler must be coroutine"
         self._result_handlers.append(f)
 
-    @asyncio.coroutine
-    def handle_result(self, task):
+    async def handle_result(self, task):
         for handler in self._result_handlers:
             try:
-                yield from handler(task)
+                await handler(task)
             except:
                 pass
 
-    @asyncio.coroutine
-    def short_info(self, request):
+    async def short_info(self, request):
         return JSONResponse({
             "tasks": {
                 "pending": len(self._queue.tasks_pending),
@@ -124,8 +120,7 @@ class Manager(object):
             "locks": len(self._queue.locks)
         })
 
-    @asyncio.coroutine
-    def extended_info(self, request):
+    async def extended_info(self, request):
         return JSONResponse({
             "tasks": {
                 "pending": [str(task) for task in self._queue.tasks_pending],
@@ -134,8 +129,7 @@ class Manager(object):
             "locks": list(self._queue.locks)
         })
 
-    @asyncio.coroutine
-    def list_tasks(self, request):
+    async def list_tasks(self, request):
         offset = safe_int_conversion(
             request.query.get("offset"), 0,
             min_val=0, max_val=self._queue.task_count
@@ -150,9 +144,8 @@ class Manager(object):
             for task in self._queue.tasks[offset:offset + limit]
         ])
 
-    @asyncio.coroutine
-    def add_task(self, request):
-        data = yield from request.json()
+    async def add_task(self, request):
+        data = await request.json()
         task = Task(**data)
 
         unique = request.query.get("unique", "").lower() == "true"
@@ -161,15 +154,14 @@ class Manager(object):
         self._queue.put(task, unique=unique)
 
         if wait:
-            yield from task.completed.wait()
+            await task.completed.wait()
             result = task.completed.data
         else:
             result = {"result": "success"}
 
         return JSONResponse(result)
 
-    @asyncio.coroutine
-    def get_task(self, request):
+    async def get_task(self, request):
         pool = request.query.get("pool")
         if not pool:
             return JSONResponse(None)
@@ -178,20 +170,18 @@ class Manager(object):
         data = task.worker_info if task else None
         return JSONResponse(data)
 
-    @asyncio.coroutine
-    def complete_task(self, request):
+    async def complete_task(self, request):
         _id = request.match_info.get('task_id')
-        data = yield from request.json()
+        data = await request.json()
 
         try:
             task = self._queue.complete(_id, data)
-            yield from self.handle_result(task)
+            await self.handle_result(task)
             return JSONResponse({"result": "Success"})
         except LookupError:
             return JSONResponse({"error": "Unknown task"}, status=404)
 
-    @asyncio.coroutine
-    def delete_task(self, request):
+    async def delete_task(self, request):
         _id = request.match_info.get('task_id')
         try:
             self._queue.safe_remove(_id)
