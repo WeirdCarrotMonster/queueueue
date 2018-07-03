@@ -46,9 +46,8 @@ class Manager(object):
                 raise TypeError("Auth credentials must be a tuple, got {}", type(auth))
             if len(auth) != 2:
                 raise ValueError("Auth credentials must be a tuple of two, got {}", len(auth))
-            self._auth = "Basic {}".format(
-                b64encode(bytes("{}:{}".format(auth[0], auth[1]), "utf-8")).decode()
-            )
+
+            self._set_auth(auth)
         else:
             self._auth = None
 
@@ -80,6 +79,11 @@ class Manager(object):
 
     def _add_route(self, method, route, func):
         self._app.router.add_route(method, route, self._authenticate(func))
+
+    def _set_auth(self, credentials):
+        self._auth = "Basic {}".format(
+            b64encode(bytes("{}:{}".format(credentials[0], credentials[1]), "utf-8")).decode()
+        )
 
     def _authenticate(self, f):
         if not self._auth:
@@ -133,11 +137,11 @@ class Manager(object):
     @asyncio.coroutine
     def list_tasks(self, request):
         offset = safe_int_conversion(
-            request.GET.get("offset"), 0,
+            request.query.get("offset"), 0,
             min_val=0, max_val=self._queue.task_count
         )
         limit = safe_int_conversion(
-            request.GET.get("limit"), 50,
+            request.query.get("limit"), 50,
             min_val=1, max_val=50
         )
 
@@ -151,8 +155,8 @@ class Manager(object):
         data = yield from request.json()
         task = Task(**data)
 
-        unique = request.GET.get("unique", "").lower() == "true"
-        wait = request.GET.get("wait", "").lower() == "true"
+        unique = request.query.get("unique", "").lower() == "true"
+        wait = request.query.get("wait", "").lower() == "true"
 
         self._queue.put(task, unique=unique)
 
@@ -166,7 +170,7 @@ class Manager(object):
 
     @asyncio.coroutine
     def get_task(self, request):
-        pool = request.GET.get("pool")
+        pool = request.query.get("pool")
         if not pool:
             return JSONResponse(None)
 
@@ -177,7 +181,7 @@ class Manager(object):
     @asyncio.coroutine
     def complete_task(self, request):
         _id = request.match_info.get('task_id')
-        data = yield from request.json(loader=json.loads)
+        data = yield from request.json()
 
         try:
             task = self._queue.complete(_id, data)
