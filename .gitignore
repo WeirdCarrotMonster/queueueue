@@ -7,3 +7,6 @@ dist
 *.pyc
 .coverage
 .cache
+.tox
+.idea
+.pytest_cache
