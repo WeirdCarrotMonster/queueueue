@@ -205,6 +205,15 @@ async def test_queue_task_work_process(cli):
     assert len(data) == 1
     taken_date = data[0]["taken"]
 
+    response = await cli.get("/lock")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 3
+
+    for lock in data:
+        assert lock["taken"] == taken_date
+        assert lock["id"] in t1.locks
+
     response = await cli.patch(
         "/task/{}".format(str(t1.id)),
         json={"stdout": "", "stderr": "", "result": "", "status": "success"}

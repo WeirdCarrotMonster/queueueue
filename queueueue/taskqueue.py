@@ -2,7 +2,7 @@ import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple, Iterator
 
 
 class Task(object):
@@ -20,7 +20,7 @@ class Task(object):
         else:
             self.id = uuid.uuid4()
         self.name = name
-        self.locks = set(locks)
+        self.locks = frozenset(locks)
         self.pool = pool
         self.args = args
         self.kwargs = kwargs
@@ -102,7 +102,7 @@ class Task(object):
 class MultiLockPriorityPoolQueue(object):
 
     def __init__(self):
-        self._locks = set()  # type: Set[str]
+        self._locks = {}  # type: Dict[str, Tuple[Task, datetime]]
         self._tasks = []  # type: List[Task]
         self._active_tasks = {}  # type: Dict[uuid.UUID, Task]
         self._logger = logging.getLogger("Queue")
@@ -122,6 +122,11 @@ class MultiLockPriorityPoolQueue(object):
     @property
     def locks(self) -> FrozenSet[str]:
         return frozenset(self._locks)
+
+    @property
+    def iter_locks(self) -> Iterator[Tuple[str, Task, datetime]]:
+        for key, value in self._locks.items():
+            yield (key, value[0], value[1])
 
     @property
     def tasks_pending(self) -> Tuple[uuid.UUID, ...]:
@@ -144,7 +149,7 @@ class MultiLockPriorityPoolQueue(object):
         for task in self._tasks:
             if task.pool != pool:
                 continue
-            if self._locks & task.locks:
+            if self.locks & task.locks:
                 continue
 
             task.taken = datetime.now(timezone.utc)
@@ -152,7 +157,8 @@ class MultiLockPriorityPoolQueue(object):
             self._tasks.remove(task)
             self._active_tasks[task.id] = task
 
-            self._locks |= task.locks
+            for lock in task.locks:
+                self._locks[lock] = (task, task.taken)
 
             self._logger.info("Sending task %s", repr(task))
             self._logger.debug("Active locks: %s", self.locks)
@@ -169,7 +175,8 @@ class MultiLockPriorityPoolQueue(object):
         self._logger.info("Completed task %s", repr(task))
         task.complete(**data)
 
-        self._locks -= task.locks
+        for lock in task.locks:
+            self._locks.pop(lock, None)
 
         self._logger.debug("Queue length: %s", len(self._tasks))
         self._logger.debug("Active locks: %s", self.locks)
@@ -182,7 +189,8 @@ class MultiLockPriorityPoolQueue(object):
         if _task_id in self._active_tasks:
             task = self._active_tasks.pop(_task_id)
 
-            self._locks -= task.locks
+            for lock in task.locks:
+                self._locks.pop(lock, None)
 
             return
 

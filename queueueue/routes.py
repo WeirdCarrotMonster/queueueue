@@ -15,3 +15,5 @@ def setup_routes(app: "web.Application"):
 
     app.router.add_route('DELETE', '/task/{task_id}', views.delete_task)
     app.router.add_route('PATCH', '/task/{task_id}', views.complete_task)
+
+    app.router.add_route('GET', '/lock', views.list_locks)

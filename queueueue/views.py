@@ -107,3 +107,15 @@ async def delete_task(request):
         return json_response({"result": "Success"})
     except LookupError:
         return json_response({"error": "Unknown task"}, status=404)
+
+
+@authenticate
+async def list_locks(request):
+    return json_response([
+        {
+            "id": _id,
+            "task": task.for_json(),
+            "taken": taken.isoformat()
+        }
+        for _id, task, taken in request.app["queue"].iter_locks
+    ])
