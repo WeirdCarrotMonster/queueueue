@@ -2,7 +2,8 @@ import asyncio
 
 import pytest
 
-from queueueue.app import build_app, setup_basic_auth, get_encoded_auth, setup_bearer_auth
+from queueueue.app import (build_app, get_encoded_auth, setup_basic_auth,
+                           setup_bearer_auth)
 from queueueue.routes import setup_routes
 from queueueue.taskqueue import Task
 
@@ -32,6 +33,9 @@ async def test_queue_add(cli):
     assert response.status == 200
     data = await response.json()
     assert len(data) == 1
+    assert "created" in data[0]
+    assert "taken" in data[0]
+    assert data[0]["taken"] is None
 
 
 async def test_queue_add_unique(cli):

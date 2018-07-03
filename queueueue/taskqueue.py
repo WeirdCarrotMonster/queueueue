@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
 
@@ -12,9 +13,12 @@ class Task(object):
                  pool: str,
                  args: List[Any],
                  kwargs: Dict[str, Any],
-                 id: Optional[str] = None,
-                 status: str = "pending") -> None:
-        self.id = uuid.UUID(id) if id else uuid.uuid4()
+                 status: str = "pending",
+                 **kw) -> None:
+        if "id" in kw:
+            self.id = uuid.UUID(kw.pop("id"))
+        else:
+            self.id = uuid.uuid4()
         self.name = name
         self.locks = set(locks)
         self.pool = pool
@@ -26,6 +30,9 @@ class Task(object):
         self.stderr = None
         self.result = None
         self.traceback = None
+
+        self.created = datetime.now(timezone.utc)
+        self.taken = None  # type: Optional[datetime]
 
         self.completed = asyncio.Event()
 
@@ -61,7 +68,9 @@ class Task(object):
             "locks": list(self.locks),
             "pool": self.pool,
             "args": self.args,
-            "kwargs": self.kwargs
+            "kwargs": self.kwargs,
+            "created": self.created.isoformat(),
+            "taken": self.taken.isoformat() if self.taken else None
         }
 
     @property
@@ -133,6 +142,8 @@ class MultiLockPriorityPoolQueue(object):
                 continue
             if self._locks & task.locks:
                 continue
+
+            task.taken = datetime.now(timezone.utc)
 
             self._tasks.remove(task)
             self._active_tasks[task.id] = task
