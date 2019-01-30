@@ -15,8 +15,6 @@ def main():
 
     args = parser.parse_args()
 
-    print(args)
-
     app = build_app()
     setup_routes(app)
 
