@@ -1,4 +1,5 @@
 import argparse
+import logging
 
 from aiohttp import web
 
@@ -12,6 +13,11 @@ def main():
     parser.add_argument("--port", help="queueueue listen port")
     parser.add_argument("--auth-basic", help="authentication credentials", action="append")
     parser.add_argument("--auth-bearer", help="authentication credentials", action="append")
+    parser.add_argument(
+        "--loglevel",
+        choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
+        default="INFO"
+    )
 
     args = parser.parse_args()
 
@@ -24,8 +30,14 @@ def main():
     if args.auth_bearer:
         setup_bearer_auth(app, args.auth_bearer)
 
+    logging.basicConfig(level=args.loglevel)
+
     web.run_app(
         app,
         host=args.host,
         port=args.port
     )
+
+
+if __name__ == "__main__":
+    main()
