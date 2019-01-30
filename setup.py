@@ -9,7 +9,7 @@ setup(
     description="Advanced task queueueue",
     packages=find_packages(),
     install_requires=[
-        'aiohttp==3.3.2'
+        'aiohttp==3.5.1'
     ],
     entry_points={
         'console_scripts': [
