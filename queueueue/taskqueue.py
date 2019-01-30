@@ -22,8 +22,8 @@ class Task(object):
         self.name = name
         self.locks = frozenset(locks)
         self.pool = pool
-        self.args = args
-        self.kwargs = kwargs
+        self.args = args or []
+        self.kwargs = kwargs or {}
         self.status = status
 
         self.stdout = None
@@ -48,6 +48,30 @@ class Task(object):
             self.locks == other.locks and
             self.args == other.args and
             self.kwargs == other.kwargs
+        )
+
+    def is_equal_to(self, other: "Task", ignore_kwargs: Optional[Set[str]] = None):
+        if ignore_kwargs is None:
+            ignore_kwargs = frozenset()
+
+        self_kwargs = set(self.kwargs.keys())
+        other_kwargs = set(other.kwargs.keys())
+
+        s_diff = self_kwargs.symmetric_difference(other_kwargs)
+        if not s_diff.issubset(ignore_kwargs):
+            return False
+
+        s_keys = self_kwargs.intersection(other_kwargs)
+        s_keys.difference_update(ignore_kwargs)
+
+        for key in s_keys:
+            if self.kwargs[key] != other.kwargs[key]:
+                return False
+
+        return (
+                self.name == other.name and
+                self.locks == other.locks and
+                self.args == other.args
         )
 
     def complete(self, **data):
@@ -136,10 +160,15 @@ class MultiLockPriorityPoolQueue(object):
     def tasks_active(self) -> Tuple[uuid.UUID, ...]:
         return tuple(self._active_tasks.keys())
 
-    def put(self, task: Task, unique: bool = False):
-        if unique and task in self._tasks:
-            self._logger.info("Task %s not unique", repr(task))
-            return
+    def put(self,
+            task: Task,
+            unique: bool = False,
+            unique_ignore_kwargs: Optional[Set[str]] = None):
+        if unique:
+            for e_task in self._tasks:
+                if e_task.is_equal_to(task, unique_ignore_kwargs):
+                    self._logger.info("Task %s not unique", repr(task))
+                    return
 
         self._logger.info("Queued task %s", repr(task))
         self._tasks.append(task)

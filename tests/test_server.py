@@ -100,6 +100,28 @@ async def test_queue_add_unique_not_equal(cli):
     assert len(data) == 2
 
 
+async def test_queue_add_unique_not_equal_ignore_kwargs(cli):
+    t1 = Task("test_task", [], "pool", [1], {"test": 1})
+    t2 = Task("test_task", [], "pool", [1], {"test": 1, "asd": 2})
+
+    response = await cli.post("/task", json=t1.for_json())
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
+
+    response = await cli.post(
+        "/task", json=t2.for_json(),
+        params={"unique": "true", "unique_ignore_kwarg": "asd"})
+    assert response.status == 200
+    data = await response.json()
+    assert data["result"] == "success"
+
+    response = await cli.get("/task")
+    assert response.status == 200
+    data = await response.json()
+    assert len(data) == 1
+
+
 async def test_queue_pool_required(cli):
     t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
     await cli.post("/task", json=t1.for_json())

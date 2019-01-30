@@ -64,8 +64,10 @@ async def add_task(request):
 
     unique = request.query.get("unique", "").lower() == "true"
     wait = request.query.get("wait", "").lower() == "true"
+    unique_ignore_kwargs = request.query.getall("unique_ignore_kwarg", [])
+    unique_ignore_kwargs = set(unique_ignore_kwargs)
 
-    request.app["queue"].put(task, unique=unique)
+    request.app["queue"].put(task, unique=unique, unique_ignore_kwargs=unique_ignore_kwargs)
 
     if wait:
         await task.completed.wait()

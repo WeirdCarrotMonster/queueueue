@@ -39,6 +39,47 @@ class TestTaskQueue(unittest.TestCase):
         assert q.task_count == 1
         assert len(q._locks) == 0
 
+    def test_queue_add_unique_not_eq(self):
+        q = MultiLockPriorityPoolQueue()
+        t = Task("test_task", [], "pool", [], {"test": 2})
+        t2 = Task("test_task", [], "pool", [], {"test": 1})
+
+        q.put(t)
+        q.put(t2, unique=True)
+
+        assert len(q._tasks) == 2
+        assert q._tasks[0].id == t.id
+        assert q._tasks[1].id == t2.id
+        assert q.task_count == 2
+        assert len(q._locks) == 0
+
+    def test_queue_add_unique_ignore_kwargs(self):
+        q = MultiLockPriorityPoolQueue()
+        t = Task("test_task", [], "pool", [], {})
+        t2 = Task("test_task", [], "pool", [], {"test": 1})
+
+        q.put(t)
+        q.put(t2, unique=True, unique_ignore_kwargs={"test"})
+
+        assert len(q._tasks) == 1
+        assert q._tasks[0].id == t.id
+        assert q.task_count == 1
+        assert len(q._locks) == 0
+
+    def test_queue_add_unique_ignore_kwargs_not_eq(self):
+        q = MultiLockPriorityPoolQueue()
+        t = Task("test_task", [], "pool", [], {"test": 2, "asd": 1})
+        t2 = Task("test_task", [], "pool", [], {"test": 1})
+
+        q.put(t)
+        q.put(t2, unique=True, unique_ignore_kwargs={"test"})
+
+        assert len(q._tasks) == 2
+        assert q._tasks[0].id == t.id
+        assert q._tasks[1].id == t2.id
+        assert q.task_count == 2
+        assert len(q._locks) == 0
+
     def test_queue_task_list_access(self):
         q = MultiLockPriorityPoolQueue()
         t = Task("test_task", [], "pool", [], {})
