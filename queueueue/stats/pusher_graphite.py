@@ -27,7 +27,7 @@ class GraphiteStatPusher:
     async def send(self, data: bytes) -> None:
         for _ in range(3):
             try:
-                connection = await asyncio.open_connection(self.host, self.port)
+                connection = asyncio.open_connection(self.host, self.port)
                 _, writer = await asyncio.wait_for(connection, timeout=5)
                 break
             except asyncio.TimeoutError:
