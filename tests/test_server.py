@@ -48,7 +48,7 @@ async def test_queue_add(cli, app):
     assert stats_data["tasks_received.pool.pool"] == 1
 
 
-async def test_queue_add_unique(cli):
+async def test_queue_add_unique(cli, app):
     t1 = Task("test_task", [1, 2, 3], "pool", [1], {})
     t2 = Task("test_task", [1, 2, 3], "pool", [1], {})
 
@@ -67,6 +67,13 @@ async def test_queue_add_unique(cli):
     assert response.status == 200
     data = await response.json()
     assert len(data) == 1
+
+    assert len(app["queue"]._tasks) == 1
+    stats_data = dict(app["stats"].stat_iter())
+    assert stats_data["tasks_received.total"] == 2
+    assert stats_data["tasks_received.pool.pool"] == 2
+    assert stats_data["tasks_duplicates.total"] == 1
+    assert stats_data["tasks_duplicates.pool.pool"] == 1
 
 
 async def test_queue_add_equal_not_unique(cli):

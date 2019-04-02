@@ -172,16 +172,18 @@ class MultiLockPriorityPoolQueue(object):
     def put(self,
             task: Task,
             unique: bool = False,
-            unique_ignore_kwargs: Optional[Set[str]] = None):
+            unique_ignore_kwargs: Optional[Set[str]] = None) -> bool:
         if unique:
             for e_task in self._tasks:
                 if e_task.is_equal_to(task, unique_ignore_kwargs):
                     self._logger.info("Task %s not unique", repr(task))
-                    return
+                    return False
 
         self._logger.info("Queued task %s", repr(task))
         self._tasks.append(task)
         self._logger.debug("Queue length: %s", len(self._tasks))
+
+        return True
 
     def get(self, pool: str) -> Optional[Task]:
         for task in self._tasks:

@@ -14,6 +14,9 @@ class StatCollector:
         self.tasks_processing_total: int = 0
         self.tasks_processing: DefaultDict[str, int] = defaultdict(int)
 
+        self.tasks_duplicates_total: int = 0
+        self.tasks_duplicates: DefaultDict[str, int] = defaultdict(int)
+
     def push_task_received(self, pool: str) -> None:
         self.tasks_received_total += 1
         self.tasks_received[pool] += 1
@@ -25,6 +28,10 @@ class StatCollector:
     def push_task_processing(self, pool: str, seconds: int) -> None:
         self.tasks_processing_total += seconds
         self.tasks_processing[pool] += seconds
+
+    def push_task_duplicate(self, pool: str) -> None:
+        self.tasks_duplicates_total += 1
+        self.tasks_duplicates[pool] += 1
 
     def stat_iter(self) -> Iterable[Tuple[str, int]]:
         yield ("tasks_received.total", self.tasks_received_total)
@@ -44,3 +51,9 @@ class StatCollector:
         for pool_name, task_counter in self.tasks_processing.items():
             pool_name = pool_name.replace(".", "_")
             yield (f"task_processing.pool.{pool_name}", task_counter)
+
+        yield ("tasks_duplicates.total", self.tasks_duplicates_total)
+
+        for pool_name, task_counter in self.tasks_duplicates.items():
+            pool_name = pool_name.replace(".", "_")
+            yield (f"tasks_duplicates.pool.{pool_name}", task_counter)
