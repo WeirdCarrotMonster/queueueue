@@ -207,7 +207,7 @@ async def test_delete_task(cli):
     assert len(data) == 0
 
 
-async def test_queue_task_work_process(cli):
+async def test_queue_task_work_process(cli, app):
     t1 = Task("test_task", ["1", "2", "3"], "pool", [1], {})
     await cli.post("/task", json=t1.for_json())
 
@@ -216,6 +216,12 @@ async def test_queue_task_work_process(cli):
     data = await response.json()
     assert t1.id in cli.server.app["queue"].tasks_pending
     assert len(data) == 1
+
+    assert len(app["queue"]._tasks) == 1
+    stats_data = dict(app["stats"].stat_iter())
+    assert stats_data["tasks_received.total"] == 1
+    assert stats_data["tasks_completed.total"] == 0
+    assert stats_data["tasks_received.pool.pool"] == 1
 
     response = await cli.patch(
         "/task/pending",
@@ -251,6 +257,13 @@ async def test_queue_task_work_process(cli):
         json={"stdout": "", "stderr": "", "result": "", "status": "success"}
     )
     assert response.status == 200
+
+    assert len(app["queue"]._tasks) == 0
+    stats_data = dict(app["stats"].stat_iter())
+    assert stats_data["tasks_received.total"] == 1
+    assert stats_data["tasks_completed.total"] == 1
+    assert stats_data["tasks_received.pool.pool"] == 1
+    assert stats_data["tasks_completed.pool.pool"] == 1
 
     response = await cli.get("/task")
     data = await response.json()

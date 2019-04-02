@@ -96,7 +96,9 @@ async def complete_task(request):
     data = await request.json()
 
     try:
-        request.app["queue"].complete(_id, data)
+        task = request.app["queue"].complete(_id, data)
+        request.app["stats"].push_task_completed(task.pool)
+        request.app["stats"].push_task_processing(task.pool, task.processing_duration)
         return json_response({"result": "Success"})
     except LookupError:
         return json_response({"error": "Unknown task"}, status=404)

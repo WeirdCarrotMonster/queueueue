@@ -32,6 +32,7 @@ class Task(object):
         self.traceback = None
 
         self.created = datetime.now(timezone.utc)
+        self.finished = None  # type: Optional[datetime]
         self.taken = None  # type: Optional[datetime]
 
         self.completed = asyncio.Event()
@@ -83,6 +84,7 @@ class Task(object):
             "status": data.get("status"),
             "result": data.get("result")
         }
+        self.finished = datetime.now(timezone.utc)
         self.completed.set()
 
     def for_json(self) -> Dict[str, Any]:
@@ -121,6 +123,13 @@ class Task(object):
             "status": self.status,
             "traceback": self.traceback
         }
+
+    @property
+    def processing_duration(self) -> int:
+        if not self.finished:  # pragma: no cover
+            return 0
+
+        return int((self.finished - self.created).total_seconds())
 
 
 class MultiLockPriorityPoolQueue(object):
