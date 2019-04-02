@@ -1,3 +1,2 @@
 [run]
-omit = queueueue/main.py
-
+omit = queueueue/main.py,queueueue/stats/pusher_graphite.py

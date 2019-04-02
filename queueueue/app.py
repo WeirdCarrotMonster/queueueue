@@ -3,6 +3,7 @@ from typing import List
 
 from aiohttp import web
 
+from .stats.collector import StatCollector
 from .taskqueue import MultiLockPriorityPoolQueue
 
 
@@ -10,6 +11,7 @@ def build_app() -> web.Application:
     app = web.Application()
     app["queue"] = MultiLockPriorityPoolQueue()
     app["auth"] = set()
+    app["stats"] = StatCollector()
     return app
 
 

@@ -9,9 +9,14 @@ from queueueue.taskqueue import Task
 
 
 @pytest.fixture
-def cli(loop, aiohttp_client):
+def app():
     app = build_app()
     setup_routes(app)
+    return app
+
+
+@pytest.fixture
+def cli(app, loop, aiohttp_client):
     return loop.run_until_complete(aiohttp_client(app))
 
 
@@ -22,7 +27,7 @@ async def test_handle_request(cli):
     assert len(data) == 0
 
 
-async def test_queue_add(cli):
+async def test_queue_add(cli, app):
     task = Task("test_task", [1, 2, 3], "pool", [1], {})
     response = await cli.post("/task", json=task.for_json())
     assert response.status == 200
@@ -36,6 +41,11 @@ async def test_queue_add(cli):
     assert "created" in data[0]
     assert "taken" in data[0]
     assert data[0]["taken"] is None
+
+    assert len(app["queue"]._tasks) == 1
+    stats_data = dict(app["stats"].stat_iter())
+    assert stats_data["tasks_received.total"] == 1
+    assert stats_data["tasks_received.pool.pool"] == 1
 
 
 async def test_queue_add_unique(cli):

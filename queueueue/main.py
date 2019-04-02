@@ -1,10 +1,11 @@
 import argparse
 import logging
+import os
 
 from aiohttp import web
 
-from queueueue.app import build_app, setup_basic_auth, setup_bearer_auth
-from queueueue.routes import setup_routes
+from .app import build_app, setup_basic_auth, setup_bearer_auth
+from .routes import setup_routes
 
 
 def main():
@@ -18,6 +19,19 @@ def main():
         choices=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"],
         default="INFO"
     )
+    parser.add_argument(
+        "--graphite",
+        default=os.environ.get("QUEUE_GRAPHITE", None),
+        help="Graphite stats server host")
+    parser.add_argument(
+        "--graphite-stats-root",
+        default=os.environ.get("QUEUE_GRAPHITE_ROOT", "queue"),
+        help="Graphite stats root key")
+    parser.add_argument(
+        "--graphite-freq",
+        help="Graphite metric collection frequency",
+        type=int, default=10
+    )
 
     args = parser.parse_args()
 
@@ -29,6 +43,17 @@ def main():
 
     if args.auth_bearer:
         setup_bearer_auth(app, args.auth_bearer)
+
+    if args.graphite:
+        from .stats.pusher_graphite import GraphiteStatPusher
+        pusher = GraphiteStatPusher(
+            app["stats"],
+            args.graphite,
+            stats_root=args.graphite_stats_root,
+            frequency=args.graphite_freq
+        )
+
+        pusher.start()
 
     logging.basicConfig(level=args.loglevel)
 
