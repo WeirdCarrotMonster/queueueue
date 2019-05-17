@@ -169,6 +169,9 @@ class MultiLockPriorityPoolQueue(object):
     def tasks_active(self) -> Tuple[uuid.UUID, ...]:
         return tuple(self._active_tasks.keys())
 
+    def __len__(self) -> int:
+        return len(self._tasks)
+
     def put(self,
             task: Task,
             unique: bool = False,

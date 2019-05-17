@@ -17,6 +17,8 @@ class StatCollector:
         self.tasks_duplicates_total: int = 0
         self.tasks_duplicates: DefaultDict[str, int] = defaultdict(int)
 
+        self.tasks_queued_total: int = 0
+
     def push_task_received(self, pool: str) -> None:
         self.tasks_received_total += 1
         self.tasks_received[pool] += 1
@@ -32,6 +34,9 @@ class StatCollector:
     def push_task_duplicate(self, pool: str) -> None:
         self.tasks_duplicates_total += 1
         self.tasks_duplicates[pool] += 1
+
+    def set_tasks_queued(self, value: int) -> None:
+        self.tasks_queued_total = value
 
     def stat_iter(self) -> Iterable[Tuple[str, int]]:
         yield ("tasks_received.total", self.tasks_received_total)
@@ -57,3 +62,5 @@ class StatCollector:
         for pool_name, task_counter in self.tasks_duplicates.items():
             pool_name = pool_name.replace(".", "_")
             yield (f"tasks_duplicates.pool.{pool_name}", task_counter)
+
+        yield ("tasks_queued.total", self.tasks_queued_total)

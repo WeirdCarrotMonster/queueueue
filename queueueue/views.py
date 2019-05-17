@@ -76,6 +76,8 @@ async def add_task(request):
     if not added:
         request.app["stats"].push_task_duplicate(task.pool)
 
+    request.app["stats"].set_tasks_queued(len(request.app["queue"]))
+
     if wait:
         await task.completed.wait()
         result = task.completed.data
@@ -105,6 +107,7 @@ async def complete_task(request):
         task = request.app["queue"].complete(_id, data)
         request.app["stats"].push_task_completed(task.pool)
         request.app["stats"].push_task_processing(task.pool, task.processing_duration)
+        request.app["stats"].set_tasks_queued(len(request.app["queue"]))
         return json_response({"result": "Success"})
     except LookupError:
         return json_response({"error": "Unknown task"}, status=404)
