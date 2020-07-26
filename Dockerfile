@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.8
 COPY requirements.txt /tmp
 RUN pip install --cache-dir=/tmp/cache -r /tmp/requirements.txt && rm -rf /tmp/cache
 
